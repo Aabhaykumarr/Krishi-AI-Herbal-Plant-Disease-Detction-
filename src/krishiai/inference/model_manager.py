@@ -49,27 +49,62 @@ def infer_species(class_name: str) -> str:
 
 
 def is_botanical_image(pil_img: Image.Image) -> tuple[bool, str]:
-    """Analyzes image color distribution and texture to detect non-plant documents,
-
-    roadmaps, flowcharts, book pages, packaging boxes, or out-of-distribution subjects.
+    """Analyzes image color distribution, texture, spatial naturalness, and geometric
+    structure to detect non-plant objects (electronic kits, circuit boards, tools, containers,
+    devices, cups, laptops, cars, screens), documents, synthetic graphics, solid colors, noise,
+    or out-of-distribution subjects.
     """
-    thumb = pil_img.resize((128, 128)).convert("RGB")
-    arr = np.array(thumb, dtype=np.float32) / 255.0
+    img_rgb = pil_img.convert("RGB")
 
+    # 1. Texture Variance Check (Rejects flat solid colors, blank screens, synthetic blocks)
+    arr_full = np.array(img_rgb, dtype=np.float32)
+    std_channels = np.std(arr_full, axis=(0, 1))
+    mean_std = float(np.mean(std_channels))
+    if mean_std < 6.0:
+        return False, f"Flat or solid-color image detected (Texture variance={mean_std:.1f} < 6.0)."
+
+    # 2. Spatial Autocorrelation Check (Rejects synthetic noise / scrambled pixels)
+    gray = np.array(img_rgb.convert("L").resize((128, 128)), dtype=np.float32)
+    var_gray = np.var(gray)
+    if var_gray > 1.0:
+        corr_x = np.corrcoef(gray[:, :-1].flatten(), gray[:, 1:].flatten())[0, 1]
+        corr_y = np.corrcoef(gray[:-1, :].flatten(), gray[1:, :].flatten())[0, 1]
+        mean_corr = float((corr_x + corr_y) / 2.0)
+        if mean_corr < 0.40:
+            return False, f"Synthetic noise or non-natural texture detected (Spatial correlation={mean_corr:.2f} < 0.40)."
+
+    # 3. Geometric Rectilinearity & Man-Made Circuit / Device Check
+    # Natural biological foliage has isotropic, curved, non-orthogonal edge distributions.
+    # Man-made objects (electronic trainer kits, PCBs, breadboards, chips, keyboards, screens, desks)
+    # have strong dominant orthogonal horizontal/vertical edges (0, 90, 180, 270 degrees).
+    gray_256 = np.array(img_rgb.convert("L").resize((256, 256)), dtype=np.float32)
+    gx = (gray_256[:-2, 2:] + 2 * gray_256[1:-1, 2:] + gray_256[2:, 2:]) - (gray_256[:-2, :-2] + 2 * gray_256[1:-1, :-2] + gray_256[2:, :-2])
+    gy = (gray_256[2:, :-2] + 2 * gray_256[2:, 1:-1] + gray_256[2:, 2:]) - (gray_256[:-2, :-2] + 2 * gray_256[:-2, 1:-1] + gray_256[:-2, 2:])
+    mag = np.hypot(gx, gy)
+    ang = np.degrees(np.arctan2(gy, gx)) % 180.0
+    mag_thresh = float(np.percentile(mag, 85))
+    sig_edges = mag > max(15.0, mag_thresh)
+
+    if np.sum(sig_edges) > 100:
+        angles = ang[sig_edges]
+        ortho_0 = (angles <= 6) | (angles >= 174)
+        ortho_90 = (angles >= 84) & (angles <= 96)
+        ortho_ratio = float(np.mean(ortho_0 | ortho_90))
+        if ortho_ratio > 0.46:
+            return False, f"Synthetic / Manufactured object detected ({ortho_ratio*100:.1f}% rectilinear horizontal/vertical edges)."
+
+    # 4. Botanical / Vegetative Spectral Indexing
+    thumb = img_rgb.resize((128, 128))
+    arr = np.array(thumb, dtype=np.float32) / 255.0
     r, g, b = arr[:, :, 0], arr[:, :, 1], arr[:, :, 2]
 
-    # 1. Excess Green Index (ExG)
-    exg = 2.0 * g - r - b
-
-    # 2. HSV color space calculation
     cmax = np.max(arr, axis=2)
     cmin = np.min(arr, axis=2)
     delta = cmax - cmin
 
     sat = np.zeros_like(cmax)
-    non_zero = cmax > 0.03
+    non_zero = cmax > 0.02
     sat[non_zero] = delta[non_zero] / cmax[non_zero]
-    mean_sat = float(np.mean(sat))
 
     hue = np.zeros_like(cmax)
     r_mask = (cmax == r) & (delta > 0)
@@ -80,31 +115,74 @@ def is_botanical_image(pil_img: Image.Image) -> tuple[bool, str]:
     hue[g_mask] = 60.0 * (((b[g_mask] - r[g_mask]) / delta[g_mask]) + 2)
     hue[b_mask] = 60.0 * (((r[b_mask] - g[b_mask]) / delta[b_mask]) + 4)
 
-    # 3. Authentic Green Chlorophyll & Botanical Foliage Tones
-    is_chlorophyll = (hue >= 45) & (hue <= 175) & (sat >= 0.06) & (g >= 0.75 * r) & (g >= 0.85 * b)
-    is_succulent_green = (hue >= 38) & (hue <= 185) & (sat >= 0.08) & (g >= 0.70 * r) & (exg > 0.03)
-    foliage_mask = is_chlorophyll | is_succulent_green
-    foliage_ratio = float(np.sum(foliage_mask) / (128 * 128))
+    # Biological vegetation signatures:
+    # A. Active Green / Succulent Chlorophyll Foliage (Basil, Mint, Aloe Vera, living foliage):
+    is_green_foliage = (
+        (hue >= 48.0) & (hue <= 180.0) &
+        (sat >= 0.07) &
+        (g >= 1.03 * b) &
+        (g >= 0.82 * r) &
+        ((2.0 * g - r - b) > 0.008)
+    )
 
-    # 4. Document / Book Page / Paper / Packaging Cardboard Detection
-    is_neutral_paper = (np.abs(r - g) < 0.045) & (np.abs(g - b) < 0.045) & (cmax > 0.45)
-    is_warm_book_paper = (r >= g) & (g >= b) & (sat < 0.28) & (cmax > 0.45)
-    is_cardboard_box = (r > g) & (g > b) & (hue >= 18) & (hue <= 42) & (sat >= 0.20) & (sat <= 0.60) & (cmax > 0.35)
-    paper_ratio = float(np.sum(is_neutral_paper | is_warm_book_paper) / (128 * 128))
-    cardboard_ratio = float(np.sum(is_cardboard_box) / (128 * 128))
+    # B. Pathological Foliar Necrosis / Chlorosis / Mildew / Lesion on Leaf:
+    is_pathology_foliage = (
+        (hue >= 14.0) & (hue <= 48.0) &
+        (sat >= 0.14) &
+        (r >= 1.15 * b) &
+        (g >= 1.04 * b) &
+        (r >= 0.88 * g)
+    )
 
-    # Gating Rules:
-    if paper_ratio > 0.40 and foliage_ratio < 0.10:
-        return False, f"Document / Book page detected ({paper_ratio*100:.1f}% paper, {foliage_ratio*100:.1f}% botanical foliage)."
+    # C. Dried Herb Foliage (Harvested dried mint / tea leaves on neutral background):
+    is_dried_herb = (
+        (r > b) & (g > b) &
+        (r >= 0.15) & (r <= 0.80) &
+        (g >= 0.15) & (g <= 0.75) &
+        (b <= 0.50) &
+        (np.abs(r - g) < 0.22) &
+        (hue >= 20.0) & (hue <= 75.0)
+    )
 
-    if cardboard_ratio > 0.30 and foliage_ratio < 0.06:
-        return False, f"Packaging / Cardboard surface detected ({cardboard_ratio*100:.1f}% cardboard, {foliage_ratio*100:.1f}% botanical foliage)."
+    green_ratio = float(np.mean(is_green_foliage))
+    pathology_ratio = float(np.mean(is_pathology_foliage))
+    dried_ratio = float(np.mean(is_dried_herb))
+    foliage_ratio = green_ratio + pathology_ratio
 
-    if foliage_ratio < 0.03:
-        return False, f"No botanical plant foliage or chlorophyll signatures detected ({foliage_ratio*100:.1f}% foliage)."
+    # 5. Out-of-Distribution Non-Botanical Rejection Filters
+    is_neutral_bg = (np.abs(r - g) < 0.05) & (np.abs(g - b) < 0.05) & (cmax > 0.60)
+    neutral_bg_ratio = float(np.mean(is_neutral_bg))
 
-    if mean_sat < 0.05 and foliage_ratio < 0.04:
-        return False, f"Low-saturation non-botanical image (Saturation={mean_sat:.2f}, Foliage={foliage_ratio*100:.1f}%)."
+    is_skin = (r > g) & (g > b) & (r > 0.35) & (r < 0.95) & (hue >= 8.0) & (hue <= 32.0) & (sat >= 0.15) & (sat <= 0.55)
+    skin_ratio = float(np.mean(is_skin))
+
+    is_sky_blue = (hue >= 185.0) & (hue <= 255.0) & (sat > 0.18)
+    blue_ratio = float(np.mean(is_sky_blue))
+
+    is_purple = (hue >= 260.0) & (hue <= 340.0) & (sat > 0.18)
+    purple_ratio = float(np.mean(is_purple))
+
+    is_red = ((hue >= 345.0) | (hue <= 12.0)) & (sat > 0.30) & (r > 1.30 * g)
+    red_ratio = float(np.mean(is_red))
+
+    if neutral_bg_ratio > 0.70 and green_ratio < 0.04 and dried_ratio < 0.25:
+        return False, f"Document / Plain surface detected ({neutral_bg_ratio*100:.1f}% neutral background)."
+    if skin_ratio > 0.40 and green_ratio < 0.04:
+        return False, f"Human subject / portrait detected ({skin_ratio*100:.1f}% skin tones)."
+    if blue_ratio > 0.50 and green_ratio < 0.04:
+        return False, f"Sky / Blue surface detected ({blue_ratio*100:.1f}% blue)."
+    if purple_ratio > 0.25 and green_ratio < 0.04:
+        return False, f"Non-foliar purple/magenta surface detected ({purple_ratio*100:.1f}% purple)."
+    if red_ratio > 0.35 and green_ratio < 0.04:
+        return False, f"Non-foliar red/orange surface detected ({red_ratio*100:.1f}% red)."
+
+    # 6. Core Botanical Vegetation Presence Requirement
+    has_active_green = green_ratio >= 0.040
+    has_pathology_with_green = (green_ratio >= 0.015) and (foliage_ratio >= 0.060)
+    has_dried_herb = (dried_ratio >= 0.30) and (neutral_bg_ratio >= 0.15 or green_ratio >= 0.005) and (skin_ratio < 0.25)
+
+    if not (has_active_green or has_pathology_with_green or has_dried_herb):
+        return False, f"No authentic botanical foliage or vegetative chlorophyll detected ({green_ratio*100:.1f}% green foliage)."
 
     return True, "Valid botanical visual signatures."
 
@@ -191,8 +269,8 @@ class ModelManager:
     ) -> PredictionResponse:
         """Executes unified inference on an input image.
 
-        Hierarchically orchestrates object detection (for localized spot/lesion
-        bounding boxes) and 15-class whole-leaf classification (for holistic
+        Hierarchically orchestrates botanical visual gating, object detection (for localized
+        spot/lesion bounding boxes), and 15-class whole-leaf classification (for holistic
         agronomic condition diagnosis).
         """
         t0 = time.perf_counter()
@@ -215,7 +293,7 @@ class ModelManager:
         t1 = time.perf_counter()
         preproc_ms = (t1 - t0) * 1000.0
 
-        # Step 2: Botanical Visual Gating (Out-Of-Distribution / Non-Plant detection)
+        # Step 2: Botanical Visual Gating (Non-Plant / Document / Synthetic Noise detection)
         is_botanical, ood_reason = is_botanical_image(pil_img)
         if not is_botanical:
             t_end = time.perf_counter()
@@ -240,18 +318,37 @@ class ModelManager:
         if plant_species == "aloe_vera" and self.cls_model is not None:
             return self._predict_classification(pil_img, preproc_ms, t1, active_conf, requested_species=plant_species)
 
-        # For Basil, Mint, or general: first try object detection for localized symptoms
+        # Run classification analysis to assess herbal species-level evidence
+        cls_species_mass = 0.0
+        dominant_species = "unknown"
+        if self.cls_model is not None:
+            cls_check = self.cls_model.predict(source=pil_img, device=self.device, verbose=False)[0]
+            names = cls_check.names
+            probs = cls_check.probs.data.cpu().numpy()
+            aloe_indices = [i for i, n in (names.items() if isinstance(names, dict) else enumerate(names)) if "aloe" in n]
+            basil_indices = [i for i, n in (names.items() if isinstance(names, dict) else enumerate(names)) if "basil" in n]
+            mint_indices = [i for i, n in (names.items() if isinstance(names, dict) else enumerate(names)) if "mint" in n]
+            p_aloe = float(np.sum(probs[aloe_indices]))
+            p_basil = float(np.sum(probs[basil_indices]))
+            p_mint = float(np.sum(probs[mint_indices]))
+            cls_species_mass = max(p_aloe, p_basil, p_mint)
+            dominant_species = "aloe_vera" if p_aloe == cls_species_mass else ("basil" if p_basil == cls_species_mass else "mint")
+
+            # If the image is Aloe Vera and not Basil/Mint -> route directly to classification
+            if dominant_species == "aloe_vera" and p_aloe >= 0.55 and (plant_species is None or plant_species == "aloe_vera"):
+                return self._predict_classification(pil_img, preproc_ms, t1, active_conf, requested_species="aloe_vera")
+
+        # For Basil, Mint, or general: try object detection for localized symptoms
+        det_resp = None
         if self.det_model is not None:
             det_resp = self._predict_detection(pil_img, preproc_ms, t1, active_conf, active_iou, requested_species=plant_species)
-            # If high-confidence bounding boxes were detected, return detection result
-            if det_resp.detections and len(det_resp.detections) > 0 and det_resp.primary_condition != "no_detections":
+            if det_resp.detections and len(det_resp.detections) > 0 and det_resp.primary_condition != "no_detections" and det_resp.confidence >= 0.30:
                 return det_resp
 
-        # If no localized bounding boxes were found or det_model is unavailable,
-        # fallback to fine-grained 15-class leaf classifier
+        # Fallback to fine-grained 15-class leaf classifier
         if self.cls_model is not None:
             return self._predict_classification(pil_img, preproc_ms, t1, active_conf, requested_species=plant_species)
-        elif self.det_model is not None:
+        elif det_resp is not None:
             return det_resp
         else:
             raise RuntimeError("No model is loaded in ModelManager.")
@@ -372,83 +469,97 @@ class ModelManager:
         p_safe = raw_probs[raw_probs > 1e-7]
         entropy = float(-np.sum(p_safe * np.log2(p_safe)) / np.log2(len(raw_probs)))
 
+        # Species-level probability mass aggregation
+        aloe_indices = [i for i, n in (names.items() if isinstance(names, dict) else enumerate(names)) if "aloe" in n]
+        basil_indices = [i for i, n in (names.items() if isinstance(names, dict) else enumerate(names)) if "basil" in n]
+        mint_indices = [i for i, n in (names.items() if isinstance(names, dict) else enumerate(names)) if "mint" in n]
+
+        p_aloe = float(np.sum(raw_probs[aloe_indices]))
+        p_basil = float(np.sum(raw_probs[basil_indices]))
+        p_mint = float(np.sum(raw_probs[mint_indices]))
+        max_species_mass = max(p_aloe, p_basil, p_mint)
+
         # Species-conditioned probability selection if species hint is provided
         if requested_species and requested_species != "all":
-            filtered_indices = [
-                idx for idx, name in (names.items() if isinstance(names, dict) else enumerate(names))
-                if infer_species(name) == requested_species
-            ]
-            if filtered_indices:
-                sub_probs = raw_probs[filtered_indices]
-                sub_sum = float(np.sum(sub_probs))
+            filtered_indices = (
+                aloe_indices if requested_species == "aloe_vera"
+                else (basil_indices if requested_species == "basil" else mint_indices)
+            )
+            sub_probs = raw_probs[filtered_indices]
+            sub_sum = float(np.sum(sub_probs))
 
-                # If model is confident that this image does NOT belong to requested species
-                if sub_sum < 0.15:
-                    t3 = time.perf_counter()
-                    total_ms = preproc_ms + infer_ms + (t3 - t2) * 1000.0
-                    return PredictionResponse(
-                        task_type="unrecognized",
-                        plant_species="unknown",
-                        primary_condition="non_plant_or_unrecognized",
-                        confidence=0.0,
-                        uncertainty_warning=f"Image does not exhibit visual features of {requested_species.replace('_', ' ').title()}. Please upload a clear photo of {requested_species.replace('_', ' ').title()} foliage.",
-                        detections=[],
-                        latency_ms=LatencyInfo(
-                            preprocessing=preproc_ms,
-                            inference=infer_ms,
-                            postprocessing=(t3 - t2) * 1000.0,
-                            total=total_ms,
-                        ),
-                    )
+            # If model is confident that this image does NOT belong to requested species
+            if sub_sum < 0.15:
+                t3 = time.perf_counter()
+                total_ms = preproc_ms + infer_ms + (t3 - t2) * 1000.0
+                return PredictionResponse(
+                    task_type="unrecognized",
+                    plant_species="unknown",
+                    primary_condition="non_plant_or_unrecognized",
+                    confidence=0.0,
+                    uncertainty_warning=f"Image does not exhibit visual features of {requested_species.replace('_', ' ').title()}. Please upload a clear photo of {requested_species.replace('_', ' ').title()} foliage.",
+                    detections=[],
+                    latency_ms=LatencyInfo(
+                        preprocessing=preproc_ms,
+                        inference=infer_ms,
+                        postprocessing=(t3 - t2) * 1000.0,
+                        total=total_ms,
+                    ),
+                )
 
-                if sub_sum > 0:
-                    norm_probs = sub_probs / sub_sum
-                    best_sub_idx = int(np.argmax(norm_probs))
-                    top1_idx = filtered_indices[best_sub_idx]
-                    top1_conf = float(norm_probs[best_sub_idx])
-                    top1_name = names.get(top1_idx, str(top1_idx)) if isinstance(names, dict) else names[top1_idx]
-                else:
-                    best_filtered_idx = max(filtered_indices, key=lambda i: raw_probs[i])
-                    top1_idx = best_filtered_idx
-                    top1_conf = float(raw_probs[best_filtered_idx])
-                    top1_name = names.get(top1_idx, str(top1_idx)) if isinstance(names, dict) else names[top1_idx]
+            if sub_sum > 0:
+                norm_probs = sub_probs / sub_sum
+                best_sub_idx = int(np.argmax(norm_probs))
+                top1_idx = filtered_indices[best_sub_idx]
+                top1_conf = float(norm_probs[best_sub_idx])
+                top1_name = names.get(top1_idx, str(top1_idx)) if isinstance(names, dict) else names[top1_idx]
             else:
                 top1_idx = int(probs.top1)
                 top1_conf = float(probs.top1conf)
                 top1_name = names.get(top1_idx, str(top1_idx)) if isinstance(names, dict) else names[top1_idx]
+            inferred_sp = requested_species
         else:
-            top1_idx = int(probs.top1)
-            top1_conf = float(probs.top1conf)
+            # Auto-Detect mode: Out-Of-Domain plant rejection
+            is_ood = (
+                (max_species_mass < 0.60) or
+                (entropy > 0.60 and unconditioned_top1_conf < 0.60) or
+                (unconditioned_top1_conf < 0.35)
+            )
+            if is_ood:
+                t3 = time.perf_counter()
+                total_ms = preproc_ms + infer_ms + (t3 - t2) * 1000.0
+                return PredictionResponse(
+                    task_type="unrecognized",
+                    plant_species="unknown",
+                    primary_condition="non_plant_or_unrecognized",
+                    confidence=round(unconditioned_top1_conf, 4),
+                    uncertainty_warning="Low confidence / Out-of-Domain plant. The foliage does not match the distinct botanical features and disease pathology of the supported herbal crops (Basil, Aloe Vera, Mint). Please upload a clear photo of Basil, Mint, or Aloe Vera.",
+                    detections=[],
+                    latency_ms=LatencyInfo(
+                        preprocessing=preproc_ms,
+                        inference=infer_ms,
+                        postprocessing=(t3 - t2) * 1000.0,
+                        total=total_ms,
+                    ),
+                )
+
+            inferred_sp = "aloe_vera" if p_aloe == max_species_mass else ("basil" if p_basil == max_species_mass else "mint")
+            target_indices = aloe_indices if inferred_sp == "aloe_vera" else (basil_indices if inferred_sp == "basil" else mint_indices)
+            sub_probs = raw_probs[target_indices]
+            sub_sum = float(np.sum(sub_probs))
+            norm_probs = sub_probs / (sub_sum if sub_sum > 0 else 1.0)
+            best_sub_idx = int(np.argmax(norm_probs))
+            top1_idx = target_indices[best_sub_idx]
+            top1_conf = float(norm_probs[best_sub_idx])
             top1_name = names.get(top1_idx, str(top1_idx)) if isinstance(names, dict) else names[top1_idx]
 
         t3 = time.perf_counter()
         postproc_ms = (t3 - t2) * 1000.0
         total_ms = preproc_ms + infer_ms + postproc_ms
 
-        # Low confidence / High entropy out-of-distribution gate for fine-tuned models
-        if len(names) <= 50 and (unconditioned_top1_conf < 0.40 or entropy > 0.75):
-            return PredictionResponse(
-                task_type="unrecognized",
-                plant_species="unknown",
-                primary_condition="non_plant_or_unrecognized",
-                confidence=round(unconditioned_top1_conf, 4),
-                uncertainty_warning="Low confidence / ambiguous image. The image does not exhibit distinct botanical disease patterns of Basil, Mint, or Aloe Vera. Please upload a clear photo of herbal plant foliage.",
-                detections=[],
-                latency_ms=LatencyInfo(
-                    preprocessing=preproc_ms,
-                    inference=infer_ms,
-                    postprocessing=postproc_ms,
-                    total=total_ms,
-                ),
-            )
-
         warning = None
-        if top1_conf < 0.45:
-            warning = "Low confidence prediction - possible out-of-distribution or unclear image."
-
-        inferred_sp = infer_species(top1_name)
-        if inferred_sp == "unknown" and requested_species:
-            inferred_sp = requested_species
+        if top1_conf < 0.35:
+            warning = "Low confidence prediction - possible subtle symptoms or non-standard lighting."
 
         # Generate a holistic whole-leaf bounding box for canvas visualization
         detections = [

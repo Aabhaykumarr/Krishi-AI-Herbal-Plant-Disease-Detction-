@@ -38,11 +38,15 @@ def test_model_info_endpoint(client):
 
 
 def test_predict_endpoint_with_image(client, tmp_path):
-    # Create a synthetic test image
-    img = Image.new("RGB", (224, 224), color=(34, 139, 34))
-    buf = io.BytesIO()
-    img.save(buf, format="JPEG")
-    buf.seek(0)
+    sample_file = Path("static/samples/basil_sample.jpg")
+    if sample_file.exists():
+        with open(sample_file, "rb") as f:
+            buf = io.BytesIO(f.read())
+    else:
+        img = Image.new("RGB", (224, 224), color=(34, 139, 34))
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG")
+        buf.seek(0)
 
     files = {"file": ("test_leaf.jpg", buf, "image/jpeg")}
     data = {"plant_species": "basil", "confidence_threshold": "0.25"}

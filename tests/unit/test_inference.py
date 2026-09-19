@@ -98,3 +98,33 @@ def test_model_manager_non_plant_rejection():
     assert resp.confidence == 0.0
     assert "No botanical leaf detected" in resp.uncertainty_warning
     assert len(resp.detections) == 0
+
+
+def test_model_manager_non_plant_objects_rejection():
+    mm = ModelManager.create_default()
+    # Test rejection of real non-plant images if present in test images directory
+    for test_img_name in ["user_trainer_kit.jpg", "kit_first_aid.jpg", "laptop_desk.jpg", "coffee_cup.jpg", "car_street.jpg"]:
+        p = Path("tests/temp_test_images") / test_img_name
+        if p.exists():
+            img = Image.open(p)
+            resp = mm.predict(img)
+            assert resp.task_type == "unrecognized"
+            assert resp.primary_condition == "non_plant_or_unrecognized"
+            assert resp.confidence == 0.0
+            assert "No botanical leaf detected" in resp.uncertainty_warning
+
+
+def test_model_manager_authentic_herbal_leaf_samples():
+    mm = ModelManager.create_default()
+    for sample_name, expected_species in [
+        ("basil_sample.jpg", "basil"),
+        ("aloe_vera_sample.jpg", "aloe_vera"),
+        ("mint_sample.jpg", "mint"),
+    ]:
+        p = Path("static/samples") / sample_name
+        if p.exists():
+            img = Image.open(p)
+            resp = mm.predict(img, plant_species=expected_species)
+            assert resp.task_type in ("detection", "classification")
+            assert resp.plant_species == expected_species
+            assert resp.confidence > 0.20
