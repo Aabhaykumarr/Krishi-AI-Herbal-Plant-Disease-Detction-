@@ -1,0 +1,50 @@
+{
+  "generated_at": "2026-09-17T13:21:27.460310+00:00",
+  "raw_dir": "data\\raw",
+  "sources": [
+    {
+      "dataset_id": "aloevera_kaggle_v1",
+      "local_path": "data\\raw\\aloevera_kaggle_v1",
+      "detected_format": "unknown",
+      "image_count": 18818,
+      "images_scanned_for_validity": 18818,
+      "invalid_images_found": 0,
+      "invalid_image_samples": [],
+      "candidate_class_folders": [
+        "final",
+        "final_Augmented"
+      ],
+      "note": "detected_format is a heuristic guess \u2014 confirm manually before trusting it (see docs/dataset.md)."
+    },
+    {
+      "dataset_id": "basil_roboflow_v4",
+      "local_path": "data\\raw\\basil_roboflow_v4",
+      "detected_format": "yolo",
+      "image_count": 5096,
+      "images_scanned_for_validity": 5096,
+      "invalid_images_found": 0,
+      "invalid_image_samples": [],
+      "candidate_class_folders": [
+        "test",
+        "train",
+        "valid"
+      ],
+      "note": "detected_format is a heuristic guess \u2014 confirm manually before trusting it (see docs/dataset.md)."
+    },
+    {
+      "dataset_id": "mint_roboflow_v1",
+      "local_path": "data\\raw\\mint_roboflow_v1",
+      "detected_format": "yolo",
+      "image_count": 3533,
+      "images_scanned_for_validity": 3533,
+      "invalid_images_found": 0,
+      "invalid_image_samples": [],
+      "candidate_class_folders": [
+        "test",
+        "train",
+        "valid"
+      ],
+      "note": "detected_format is a heuristic guess \u2014 confirm manually before trusting it (see docs/dataset.md)."
+    }
+  ]
+}

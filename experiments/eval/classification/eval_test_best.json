@@ -1,0 +1,12 @@
+{
+  "task": "classification",
+  "model_path": "runs/classify/models/runs/classify/krishiai_leaf_classifier_balanced/weights/best.pt",
+  "data_dir": "data/final/leaf_crops_balanced",
+  "split": "test",
+  "timestamp": "2026-09-19T04:58:53.818723+00:00",
+  "device": "cpu",
+  "metrics": {
+    "top1_accuracy": 0.7199,
+    "top5_accuracy": 0.977
+  }
+}

@@ -1,0 +1,139 @@
+{
+  "timestamp": "2026-09-18T10:15:09.080266+00:00",
+  "random_seed": 42,
+  "classification": {
+    "dataset_id": "aloevera_kaggle_v1",
+    "task_type": "classification",
+    "raw_images": 2500,
+    "quarantined_files": 35,
+    "clean_images": 2416,
+    "splits": {
+      "train": {
+        "aloe_vera_anthracnose": 344,
+        "aloe_vera_healthy": 511,
+        "aloe_vera_leaf_spot": 343,
+        "aloe_vera_rust": 144,
+        "aloe_vera_sunburn": 347
+      },
+      "val": {
+        "aloe_vera_anthracnose": 73,
+        "aloe_vera_healthy": 109,
+        "aloe_vera_leaf_spot": 73,
+        "aloe_vera_rust": 31,
+        "aloe_vera_sunburn": 74
+      },
+      "test": {
+        "aloe_vera_anthracnose": 75,
+        "aloe_vera_healthy": 111,
+        "aloe_vera_leaf_spot": 74,
+        "aloe_vera_rust": 32,
+        "aloe_vera_sunburn": 75
+      }
+    },
+    "canonical_classes": [
+      "aloe_vera_anthracnose",
+      "aloe_vera_healthy",
+      "aloe_vera_leaf_spot",
+      "aloe_vera_rust",
+      "aloe_vera_sunburn"
+    ]
+  },
+  "detection": {
+    "task_type": "detection",
+    "total_images": 8629,
+    "total_polygons_converted": 39,
+    "splits": {
+      "train": 6042,
+      "val": 1293,
+      "test": 1294
+    },
+    "class_names": [
+      "basil_bacterial_spot",
+      "basil_bug_spot",
+      "basil_downy_mildew",
+      "basil_healthy",
+      "basil_magnesium_deficiency",
+      "basil_nitrogen_deficiency",
+      "basil_powdery_mildew",
+      "mint_dried",
+      "mint_fresh",
+      "mint_spoiled"
+    ],
+    "sources": {
+      "basil_roboflow_v4": {
+        "image_count": 5096,
+        "base_groups": 1754,
+        "polygons_converted": 39,
+        "splits": {
+          "train": 3567,
+          "val": 764,
+          "test": 765
+        },
+        "class_counts": {
+          "train": {
+            "2": 1319,
+            "3": 2121,
+            "6": 1874,
+            "4": 976,
+            "5": 959,
+            "1": 643,
+            "0": 710
+          },
+          "val": {
+            "6": 356,
+            "3": 454,
+            "2": 326,
+            "4": 197,
+            "1": 72,
+            "5": 186,
+            "0": 199
+          },
+          "test": {
+            "6": 433,
+            "2": 333,
+            "5": 191,
+            "4": 201,
+            "0": 144,
+            "3": 449,
+            "1": 155
+          }
+        }
+      },
+      "mint_roboflow_v1": {
+        "image_count": 3533,
+        "base_groups": 3274,
+        "polygons_converted": 0,
+        "splits": {
+          "train": 2475,
+          "val": 529,
+          "test": 529
+        },
+        "class_counts": {
+          "train": {
+            "7": 727,
+            "8": 914,
+            "9": 834
+          },
+          "val": {
+            "8": 219,
+            "9": 166,
+            "7": 145
+          },
+          "test": {
+            "7": 177,
+            "8": 181,
+            "9": 173
+          }
+        }
+      }
+    }
+  },
+  "verification": {
+    "images_checked": 11045,
+    "invalid_images": 0,
+    "labels_checked": 8629,
+    "invalid_labels": 0,
+    "cross_split_hash_leaks": 0,
+    "status": "PASSED"
+  }
+}

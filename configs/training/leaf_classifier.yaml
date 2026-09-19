@@ -1,0 +1,23 @@
+# Training Configuration for Balanced 15-Class Leaf Crop Classifier (KrishiAI)
+task: classification
+data: data/final/leaf_crops_balanced
+model: models/pretrained/yolo26n-cls.pt
+imgsz: 192
+epochs: 8
+batch: 32
+optimizer: AdamW
+lr0: 0.0015
+lrf: 0.01
+momentum: 0.937
+weight_decay: 0.0005
+warmup_epochs: 1.0
+device: cpu
+workers: 0
+patience: 8
+save: true
+save_period: 1
+project: models/runs/classify
+name: krishiai_leaf_classifier_balanced
+exist_ok: true
+seed: 42
+verbose: false

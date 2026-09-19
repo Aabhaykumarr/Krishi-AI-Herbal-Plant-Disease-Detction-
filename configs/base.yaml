@@ -1,0 +1,30 @@
+# KrishiAI base configuration.
+# Environment variables (see .env.example) override the values below at
+# runtime via src/krishiai/config/settings.py — this file holds the defaults.
+
+project:
+  name: krishiai
+  version: "0.1.0-phase1"
+
+paths:
+  data_root: data
+  raw: data/raw
+  extracted: data/extracted
+  interim: data/interim
+  processed: data/processed
+  final: data/final
+  manifests: data/manifests
+  experiments: experiments
+  models: models
+
+hardware:
+  device: auto          # auto | cpu | cuda:0 ... — never hardcode a GPU assumption (Section 13)
+  mixed_precision: true
+  reference_gpu: "RTX 4050 laptop (limited VRAM)"   # documentation only, not enforced by code
+
+reproducibility:
+  seed: 42
+
+logging:
+  level: INFO
+  format: json

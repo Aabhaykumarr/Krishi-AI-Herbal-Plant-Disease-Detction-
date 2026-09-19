@@ -1,0 +1,83 @@
+{
+  "timestamp": "2026-09-18T11:15:11Z",
+  "total_images_tested": 5,
+  "perturbations": {
+    "brightness": {
+      "dark_-50%": {
+        "label_agreement_rate": 1.0,
+        "avg_confidence_retention": 0.8763,
+        "uncertainty_trigger_rate": 0.8
+      },
+      "bright_+50%": {
+        "label_agreement_rate": 1.0,
+        "avg_confidence_retention": 1.0229,
+        "uncertainty_trigger_rate": 0.6
+      }
+    },
+    "contrast": {
+      "low_contrast_-50%": {
+        "label_agreement_rate": 0.8,
+        "avg_confidence_retention": 0.768,
+        "uncertainty_trigger_rate": 0.8
+      },
+      "high_contrast_+50%": {
+        "label_agreement_rate": 1.0,
+        "avg_confidence_retention": 1.0062,
+        "uncertainty_trigger_rate": 0.6
+      }
+    },
+    "blur": {
+      "gaussian_blur_r2": {
+        "label_agreement_rate": 0.8,
+        "avg_confidence_retention": 0.9314,
+        "uncertainty_trigger_rate": 0.6
+      },
+      "gaussian_blur_r5": {
+        "label_agreement_rate": 0.8,
+        "avg_confidence_retention": 1.0132,
+        "uncertainty_trigger_rate": 0.6
+      }
+    },
+    "noise": {
+      "gaussian_noise_std20": {
+        "label_agreement_rate": 1.0,
+        "avg_confidence_retention": 0.9402,
+        "uncertainty_trigger_rate": 0.8
+      },
+      "gaussian_noise_std40": {
+        "label_agreement_rate": 0.6,
+        "avg_confidence_retention": 0.8783,
+        "uncertainty_trigger_rate": 0.6
+      }
+    },
+    "rotation": {
+      "rotate_15deg": {
+        "label_agreement_rate": 0.4,
+        "avg_confidence_retention": 1.0108,
+        "uncertainty_trigger_rate": 0.2
+      },
+      "rotate_45deg": {
+        "label_agreement_rate": 0.4,
+        "avg_confidence_retention": 0.6,
+        "uncertainty_trigger_rate": 0.8
+      },
+      "rotate_90deg": {
+        "label_agreement_rate": 0.6,
+        "avg_confidence_retention": 0.6,
+        "uncertainty_trigger_rate": 1.0
+      }
+    },
+    "occlusion": {
+      "center_occlusion_20%": {
+        "label_agreement_rate": 0.8,
+        "avg_confidence_retention": 0.8073,
+        "uncertainty_trigger_rate": 0.6
+      },
+      "center_occlusion_40%": {
+        "label_agreement_rate": 0.4,
+        "avg_confidence_retention": 0.6,
+        "uncertainty_trigger_rate": 1.0
+      }
+    }
+  }
+}

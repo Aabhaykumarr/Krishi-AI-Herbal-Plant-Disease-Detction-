@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KrishiAI — Herbal Leaf Disease Detection & Diagnostics</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .glass-panel { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); }
+    .custom-shadow { box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05), 0 20px 25px -5px rgba(0, 0, 0, 0.04); }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased">
+
+  <!-- Header -->
+  <header class="sticky top-0 z-50 glass-panel border-b border-slate-200/80 px-6 py-4 shadow-sm">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
+          <i data-lucide="sprout" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+            Krishi<span class="text-emerald-600">AI</span>
+            <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">YOLO26 v1.0</span>
+          </h1>
+          <p class="text-xs text-slate-500">Herbal Plant Leaf Disease Detection & Multi-Class Classification</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-4">
+        <div id="system-status" class="flex items-center space-x-2 text-xs font-medium px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+          <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse" id="status-dot"></span>
+          <span id="status-text">Connecting to API...</span>
+        </div>
+        <a href="/docs" target="_blank" class="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition flex items-center gap-1.5">
+          <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+          API Docs
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+    <!-- Left Column: Controls & Input -->
+    <div class="lg:col-span-5 space-y-6">
+
+      <!-- Upload Card -->
+      <div class="bg-white rounded-2xl p-6 border border-slate-200/80 custom-shadow">
+        <h2 class="text-base font-bold text-slate-900 mb-1 flex items-center gap-2">
+          <i data-lucide="upload-cloud" class="w-5 h-5 text-emerald-600"></i>
+          Leaf Image Ingestion
+        </h2>
+        <p class="text-xs text-slate-500 mb-4">Upload a high-resolution photo of a Basil, Aloe Vera, or Mint leaf.</p>
+
+        <!-- Dropzone -->
+        <div id="dropzone" class="border-2 border-dashed border-slate-300 hover:border-emerald-500 bg-slate-50/50 hover:bg-emerald-50/20 rounded-xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[190px]">
+          <input type="file" id="file-input" class="hidden" accept="image/jpeg,image/png,image/webp" />
+          <div id="dropzone-empty" class="flex flex-col items-center">
+            <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-3">
+              <i data-lucide="image-plus" class="w-6 h-6"></i>
+            </div>
+            <p class="text-sm font-semibold text-slate-700">Click to upload or drag & drop</p>
+            <p class="text-xs text-slate-400 mt-1">JPEG, PNG, or WebP up to 15MB</p>
+          </div>
+          <div id="dropzone-preview-container" class="hidden w-full relative">
+            <img id="image-thumbnail" class="max-h-48 rounded-lg mx-auto object-contain border border-slate-200 shadow-sm" />
+            <button id="btn-remove-image" class="absolute top-1 right-1 bg-slate-900/70 hover:bg-slate-900 text-white rounded-full p-1 transition shadow">
+              <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Sample Leaf Buttons -->
+        <div class="mt-4 pt-4 border-t border-slate-100">
+          <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Quick Test Samples</p>
+          <div class="grid grid-cols-3 gap-2">
+            <button type="button" onclick="loadSample('basil')" class="text-xs font-medium py-1.5 px-2.5 rounded-lg border border-slate-200 hover:bg-slate-100 hover:text-emerald-700 transition text-slate-600 flex items-center justify-center gap-1.5">
+              🌿 Basil
+            </button>
+            <button type="button" onclick="loadSample('aloevera')" class="text-xs font-medium py-1.5 px-2.5 rounded-lg border border-slate-200 hover:bg-slate-100 hover:text-emerald-700 transition text-slate-600 flex items-center justify-center gap-1.5">
+              🌵 Aloe Vera
+            </button>
+            <button type="button" onclick="loadSample('mint')" class="text-xs font-medium py-1.5 px-2.5 rounded-lg border border-slate-200 hover:bg-slate-100 hover:text-emerald-700 transition text-slate-600 flex items-center justify-center gap-1.5">
+              🍃 Mint
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Inference Settings Card -->
+      <div class="bg-white rounded-2xl p-6 border border-slate-200/80 custom-shadow">
+        <h2 class="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+          <i data-lucide="sliders" class="w-5 h-5 text-emerald-600"></i>
+          Inference Parameters
+        </h2>
+
+        <div class="space-y-4">
+          <!-- Species Selector -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1.5">Target Crop Species</label>
+            <select id="species-select" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none transition">
+              <option value="">⚡ Auto-Detect (Dual Pipeline Gateway)</option>
+              <option value="basil">🌿 Basil (Ocimum basilicum — Detection)</option>
+              <option value="aloe_vera">🌵 Aloe Vera (Aloe barbadensis — Classification)</option>
+              <option value="mint">🍃 Mint (Mentha spicata — Detection)</option>
+            </select>
+          </div>
+
+          <!-- Confidence Threshold -->
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-xs font-semibold text-slate-700">Confidence Threshold</label>
+              <span id="conf-val" class="text-xs font-mono font-bold text-emerald-600">0.25</span>
+            </div>
+            <input type="range" id="conf-slider" min="0.05" max="0.95" step="0.05" value="0.25" class="w-full accent-emerald-600 cursor-pointer" />
+          </div>
+
+          <!-- IoU Threshold -->
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-xs font-semibold text-slate-700">NMS IoU Threshold</label>
+              <span id="iou-val" class="text-xs font-mono font-bold text-emerald-600">0.45</span>
+            </div>
+            <input type="range" id="iou-slider" min="0.10" max="0.90" step="0.05" value="0.45" class="w-full accent-emerald-600 cursor-pointer" />
+          </div>
+
+          <!-- Run Inference Button -->
+          <button id="btn-predict" disabled class="w-full mt-2 py-3 px-4 rounded-xl font-bold text-sm bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 text-white shadow-md shadow-emerald-600/20 hover:shadow-lg transition flex items-center justify-center gap-2">
+            <i data-lucide="play" class="w-4 h-4"></i>
+            Run Disease Diagnosis
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Visualization & Diagnostic Results -->
+    <div class="lg:col-span-7 space-y-6">
+
+      <!-- Visualization Panel -->
+      <div class="bg-white rounded-2xl p-6 border border-slate-200/80 custom-shadow">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <i data-lucide="scan" class="w-5 h-5 text-emerald-600"></i>
+            Visual Diagnostic Analysis
+          </h2>
+          <span id="badge-task-type" class="text-xs font-bold px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 uppercase tracking-wider">
+            Ready
+          </span>
+        </div>
+
+        <!-- Canvas Container -->
+        <div class="relative bg-slate-900 rounded-xl overflow-hidden min-h-[380px] flex items-center justify-center border border-slate-800">
+          <div id="canvas-placeholder" class="text-center text-slate-400 p-8 flex flex-col items-center">
+            <i data-lucide="eye" class="w-12 h-12 text-slate-600 mb-3"></i>
+            <p class="text-sm font-medium">No image analyzed yet</p>
+            <p class="text-xs text-slate-500 mt-1">Upload a leaf image and click 'Run Disease Diagnosis' to view detections</p>
+          </div>
+
+          <div id="canvas-wrapper" class="hidden relative max-w-full max-h-[480px]">
+            <canvas id="result-canvas" class="max-w-full max-h-[480px] rounded-lg shadow-inner object-contain"></canvas>
+          </div>
+
+          <!-- Loading Spinner Overlay -->
+          <div id="loading-overlay" class="hidden absolute inset-0 bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center text-white">
+            <div class="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+            <p class="text-sm font-semibold tracking-wide">Executing YOLO26 Inference Pipeline...</p>
+            <p class="text-xs text-slate-400 mt-1">Running preprocessing, neural forward pass, and post-filtering</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Diagnostic Results Card -->
+      <div id="results-card" class="hidden bg-white rounded-2xl p-6 border border-slate-200/80 custom-shadow space-y-6">
+
+        <!-- Summary Header -->
+        <div class="flex flex-wrap items-start justify-between gap-4 pb-5 border-b border-slate-100">
+          <div>
+            <span id="res-category-badge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-rose-100 text-rose-800 uppercase tracking-wider">
+              Disease Detected
+            </span>
+            <h3 id="res-primary-condition" class="text-2xl font-extrabold text-slate-900 mt-2 capitalize">
+              Basil Bacterial Spot
+            </h3>
+            <p id="res-species-label" class="text-xs font-medium text-slate-500 mt-0.5">
+              Crop: <span class="font-bold text-slate-700 capitalize">Basil (Ocimum basilicum)</span>
+            </p>
+          </div>
+
+          <div class="text-right">
+            <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Model Confidence</div>
+            <div id="res-confidence-pct" class="text-3xl font-black text-emerald-600 mt-0.5">94.2%</div>
+          </div>
+        </div>
+
+        <!-- Uncertainty / OOD Warning (if present) -->
+        <div id="res-warning" class="hidden p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 flex items-start gap-3">
+          <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 shrink-0 mt-0.5"></i>
+          <div>
+            <div class="text-xs font-bold uppercase tracking-wider">Uncertainty Warning</div>
+            <p id="res-warning-text" class="text-xs mt-0.5"></p>
+          </div>
+        </div>
+
+        <!-- Treatment & Agronomic Recommendation -->
+        <div id="res-recommendation-box" class="p-4 rounded-xl bg-emerald-50/70 border border-emerald-100 text-slate-800">
+          <h4 class="text-xs font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-1.5 mb-2">
+            <i data-lucide="shield-check" class="w-4 h-4 text-emerald-600"></i>
+            Agronomic Treatment & Management Advice
+          </h4>
+          <p id="res-recommendation-text" class="text-xs leading-relaxed text-slate-700"></p>
+        </div>
+
+        <!-- Latency Metrics Breakdown -->
+        <div>
+          <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+            <i data-lucide="zap" class="w-4 h-4 text-amber-500"></i>
+            Latency Profile (Hardware Benchmarks)
+          </h4>
+          <div class="grid grid-cols-4 gap-2 text-center">
+            <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+              <div class="text-[10px] font-semibold text-slate-400 uppercase">Preproc</div>
+              <div id="lat-pre" class="text-xs font-mono font-bold text-slate-700 mt-0.5">1.2ms</div>
+            </div>
+            <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+              <div class="text-[10px] font-semibold text-slate-400 uppercase">Inference</div>
+              <div id="lat-inf" class="text-xs font-mono font-bold text-emerald-600 mt-0.5">8.4ms</div>
+            </div>
+            <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+              <div class="text-[10px] font-semibold text-slate-400 uppercase">Postproc</div>
+              <div id="lat-post" class="text-xs font-mono font-bold text-slate-700 mt-0.5">0.6ms</div>
+            </div>
+            <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+              <div class="text-[10px] font-semibold text-slate-400 uppercase">Total</div>
+              <div id="lat-tot" class="text-xs font-mono font-black text-slate-900 mt-0.5">10.2ms</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Detections List -->
+        <div id="detections-container">
+          <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Detected Lesions & Regions (<span id="det-count">0</span>)</h4>
+          <div id="detections-list" class="space-y-1.5 max-h-48 overflow-y-auto pr-1"></div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="glass-panel border-t border-slate-200/80 px-6 py-4 mt-auto text-center text-xs text-slate-400">
+    KrishiAI v1.0.0 — Powered by Ultralytics YOLO26 Nano Dual-Pipeline Architecture. Fully harmonized & leakage-free.
+  </footer>
+
+  <script>
+    // Agronomic Recommendation Knowledge Base
+    const RECOMMENDATIONS = {
+      "basil_bacterial_spot": "Avoid overhead watering; remove severely affected foliage; apply copper-based bactericide in cool early mornings.",
+      "basil_bug_spot": "Inspect undersides of leaves for insects; apply organic neem oil extract or insecticidal soap.",
+      "basil_downy_mildew": "Improve canopy ventilation and air circulation; apply preventive bio-fungicides (Bacillus subtilis); reduce humidity.",
+      "basil_powdery_mildew": "Ensure adequate spacing between plants; apply potassium bicarbonate or sulfur-based organic fungicides.",
+      "basil_magnesium_deficiency": "Apply Epsom salts (magnesium sulfate) foliar spray (1 tbsp/gallon water) or amend soil with dolomitic limestone.",
+      "basil_nitrogen_deficiency": "Supplement with high-nitrogen organic liquid fertilizer (fish emulsion, blood meal, or balanced organic compost tea).",
+      "basil_healthy": "Plant shows vigorous growth with no signs of pathogen infection. Maintain regular watering schedule at soil level.",
+      "aloe_vera_rust": "Isolate affected plants; avoid wetting succulent leaves; treat with approved organic systemic fungicides.",
+      "aloe_vera_anthracnose": "Prune infected leaf tips with sterile shears; decrease watering frequency and allow soil to dry completely between waterings.",
+      "aloe_vera_leaf_spot": "Provide bright indirect sunlight; ensure excellent drainage; apply mild copper soap fungicide.",
+      "aloe_vera_sunburn": "Move plant to a location with bright filtered light; gradually acclimatize to direct sunlight; hydrate root zone.",
+      "aloe_vera_healthy": "Succulent foliage is firm and healthy. Continue standard arid succulent watering regimen.",
+      "mint_fresh": "Fresh herbal leaves in optimal condition for harvest, culinary, or pharmaceutical extraction.",
+      "mint_dried": "Naturally dehydrated or desiccated foliage. Safe for dry tea/herb storage if free from mold.",
+      "mint_spoiled": "Foliage exhibits bacterial/fungal decay and tissue breakdown. Discard immediately to prevent contamination of healthy stock."
+    };
+
+    let selectedFile = null;
+    let loadedImage = null;
+
+    // Initialize Lucide icons
+    lucide.createIcons();
+
+    // DOM Elements
+    const dropzone = document.getElementById("dropzone");
+    const fileInput = document.getElementById("file-input");
+    const dropzoneEmpty = document.getElementById("dropzone-empty");
+    const dropzonePreview = document.getElementById("dropzone-preview-container");
+    const imageThumbnail = document.getElementById("image-thumbnail");
+    const btnRemove = document.getElementById("btn-remove-image");
+    const btnPredict = document.getElementById("btn-predict");
+    const speciesSelect = document.getElementById("species-select");
+    const confSlider = document.getElementById("conf-slider");
+    const confVal = document.getElementById("conf-val");
+    const iouSlider = document.getElementById("iou-slider");
+    const iouVal = document.getElementById("iou-val");
+    const statusDot = document.getElementById("status-dot");
+    const statusText = document.getElementById("status-text");
+
+    // Results elements
+    const canvasPlaceholder = document.getElementById("canvas-placeholder");
+    const canvasWrapper = document.getElementById("canvas-wrapper");
+    const resultCanvas = document.getElementById("result-canvas");
+    const loadingOverlay = document.getElementById("loading-overlay");
+    const resultsCard = document.getElementById("results-card");
+    const badgeTaskType = document.getElementById("badge-task-type");
+
+    // Slider Listeners
+    confSlider.addEventListener("input", (e) => confVal.textContent = parseFloat(e.target.value).toFixed(2));
+    iouSlider.addEventListener("input", (e) => iouVal.textContent = parseFloat(e.target.value).toFixed(2));
+
+    // Health Check on Load
+    async function checkHealth() {
+      try {
+        const res = await fetch("/health");
+        if (res.ok) {
+          const data = await res.json();
+          statusDot.className = "w-2 h-2 rounded-full bg-emerald-500";
+          statusText.textContent = `Online (${data.models.device.toUpperCase()})`;
+        } else {
+          throw new Error();
+        }
+      } catch (err) {
+        statusDot.className = "w-2 h-2 rounded-full bg-rose-500";
+        statusText.textContent = "Offline";
+      }
+    }
+    checkHealth();
+
+    // Drag and drop handlers
+    dropzone.addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", (e) => {
+      if (e.target.files.length > 0) handleFile(e.target.files[0]);
+    });
+
+    dropzone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      dropzone.classList.add("border-emerald-500", "bg-emerald-50/30");
+    });
+    dropzone.addEventListener("dragleave", () => {
+      dropzone.classList.remove("border-emerald-500", "bg-emerald-50/30");
+    });
+    dropzone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropzone.classList.remove("border-emerald-500", "bg-emerald-50/30");
+      if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+    });
+
+    btnRemove.addEventListener("click", (e) => {
+      e.stopPropagation();
+      resetUpload();
+    });
+
+    function handleFile(file) {
+      if (!file.type.startsWith("image/")) {
+        alert("Please select a valid image file (JPEG, PNG, WebP).");
+        return;
+      }
+      selectedFile = file;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        imageThumbnail.src = event.target.result;
+        dropzoneEmpty.classList.add("hidden");
+        dropzonePreview.classList.remove("hidden");
+        btnPredict.disabled = false;
+
+        // Preload Image for Canvas drawing
+        const img = new Image();
+        img.onload = () => { loadedImage = img; };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function resetUpload() {
+      selectedFile = null;
+      loadedImage = null;
+      fileInput.value = "";
+      dropzoneEmpty.classList.remove("hidden");
+      dropzonePreview.classList.add("hidden");
+      btnPredict.disabled = true;
+      canvasPlaceholder.classList.remove("hidden");
+      canvasWrapper.classList.add("hidden");
+      resultsCard.classList.add("hidden");
+      badgeTaskType.textContent = "Ready";
+    }
+
+    // Load real high-quality test leaf sample
+    async function loadSample(type) {
+      const sampleMap = {
+        'basil': { url: '/static/samples/basil_sample.jpg', filename: 'basil_powdery_mildew_sample.jpg', species: 'basil' },
+        'aloevera': { url: '/static/samples/aloe_vera_sample.jpg', filename: 'aloe_vera_rust_sample.jpg', species: 'aloe_vera' },
+        'mint': { url: '/static/samples/mint_sample.jpg', filename: 'mint_dried_sample.jpg', species: 'mint' },
+      };
+
+      const sample = sampleMap[type];
+      if (!sample) return;
+
+      speciesSelect.value = sample.species;
+
+      try {
+        const response = await fetch(sample.url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const blob = await response.blob();
+        const file = new File([blob], sample.filename, { type: "image/jpeg" });
+        handleFile(file);
+      } catch (err) {
+        console.error("Could not load sample image:", err);
+      }
+    }
+
+    // Prediction Trigger
+    btnPredict.addEventListener("click", async () => {
+      if (!selectedFile) return;
+
+      loadingOverlay.classList.remove("hidden");
+      btnPredict.disabled = true;
+
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+      if (speciesSelect.value) formData.append("plant_species", speciesSelect.value);
+      formData.append("confidence_threshold", confSlider.value);
+      formData.append("iou_threshold", iouSlider.value);
+
+      try {
+        const response = await fetch("/predict", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.detail || "Prediction failed");
+        }
+
+        const data = await response.json();
+        renderResults(data);
+      } catch (err) {
+        alert("Error during inference: " + err.message);
+      } finally {
+        loadingOverlay.classList.add("hidden");
+        btnPredict.disabled = false;
+      }
+    });
+
+    function renderResults(data) {
+      // Show Canvas
+      canvasPlaceholder.classList.add("hidden");
+      canvasWrapper.classList.remove("hidden");
+      resultsCard.classList.remove("hidden");
+
+      const isUnrecognized = data.primary_condition === "non_plant_or_unrecognized" || data.task_type === "unrecognized";
+
+      if (isUnrecognized) {
+        badgeTaskType.textContent = "NON-PLANT / UNRECOGNIZED";
+        badgeTaskType.className = "text-xs font-semibold px-2.5 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-200";
+      } else {
+        badgeTaskType.textContent = `${data.task_type.toUpperCase()} • ${data.plant_species.toUpperCase()}`;
+        badgeTaskType.className = "text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200";
+      }
+
+      // Render image & bounding boxes on canvas
+      const canvas = resultCanvas;
+      const ctx = canvas.getContext("2d");
+
+      if (loadedImage) {
+        canvas.width = loadedImage.naturalWidth || 640;
+        canvas.height = loadedImage.naturalHeight || 640;
+        ctx.drawImage(loadedImage, 0, 0, canvas.width, canvas.height);
+
+        // Draw boxes if detection and NOT unrecognized
+        if (!isUnrecognized && data.detections && data.detections.length > 0) {
+          data.detections.forEach((det) => {
+            const b = det.bbox;
+            const x = (b.x_center - b.width / 2) * canvas.width;
+            const y = (b.y_center - b.height / 2) * canvas.height;
+            const w = b.width * canvas.width;
+            const h = b.height * canvas.height;
+
+            // Box styling
+            ctx.strokeStyle = "#10b981"; // Emerald
+            if (det.category === "disease") ctx.strokeStyle = "#ef4444"; // Red
+            if (det.category === "deficiency") ctx.strokeStyle = "#f59e0b"; // Amber
+            ctx.lineWidth = Math.max(3, Math.round(canvas.width / 200));
+            ctx.strokeRect(x, y, w, h);
+
+            // Label background
+            const label = `${det.class_name.replace(/_/g, ' ')} ${(det.confidence * 100).toFixed(0)}%`;
+            ctx.font = `bold ${Math.max(12, Math.round(canvas.width / 35))}px 'Plus Jakarta Sans', sans-serif`;
+            const textMetrics = ctx.measureText(label);
+            const pad = 6;
+
+            ctx.fillStyle = ctx.strokeStyle;
+            ctx.fillRect(x, Math.max(0, y - 28), textMetrics.width + pad * 2, 28);
+
+            ctx.fillStyle = "#ffffff";
+            ctx.fillText(label, x + pad, Math.max(20, y - 8));
+          });
+        }
+      }
+
+      // Populate Diagnostic Text
+      const condElem = document.getElementById("res-primary-condition");
+      const catBadge = document.getElementById("res-category-badge");
+      const recElem = document.getElementById("res-recommendation-text");
+
+      if (isUnrecognized) {
+        condElem.textContent = "Non-Plant / Unrecognized Image";
+        condElem.className = "text-xl font-bold text-rose-600";
+        document.getElementById("res-species-label").innerHTML = `Crop: <span class="font-bold text-slate-500">None detected</span>`;
+        document.getElementById("res-confidence-pct").textContent = `0.0%`;
+        catBadge.className = "text-xs font-bold px-2.5 py-1 rounded-full bg-slate-200 text-slate-700 uppercase tracking-wider";
+        catBadge.textContent = "Non-Botanical";
+        recElem.textContent = "No botanical disease diagnosis can be performed on non-plant images or synthetic diagrams. Please upload a clear photo of Basil, Mint, or Aloe Vera foliage.";
+      } else {
+        const cleanCondition = (data.primary_condition || "Unknown").replace(/_/g, " ");
+        condElem.textContent = cleanCondition;
+        condElem.className = "text-xl font-bold text-slate-900 capitalize";
+        document.getElementById("res-species-label").innerHTML = `Crop: <span class="font-bold text-slate-700 capitalize">${data.plant_species.replace(/_/g, " ")}</span>`;
+        document.getElementById("res-confidence-pct").textContent = `${(data.confidence * 100).toFixed(1)}%`;
+
+        // Category Badge
+        if (cleanCondition.includes("healthy") || cleanCondition.includes("fresh")) {
+          catBadge.className = "text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 uppercase tracking-wider";
+          catBadge.textContent = "Healthy Condition";
+        } else if (cleanCondition.includes("deficiency")) {
+          catBadge.className = "text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 uppercase tracking-wider";
+          catBadge.textContent = "Nutritional Deficiency";
+        } else {
+          catBadge.className = "text-xs font-bold px-2.5 py-1 rounded-full bg-rose-100 text-rose-800 uppercase tracking-wider";
+          catBadge.textContent = "Disease Pathology";
+        }
+
+        // Recommendation
+        const rec = RECOMMENDATIONS[data.primary_condition] || "Perform regular visual inspections and monitor soil moisture.";
+        recElem.textContent = rec;
+      }
+
+      // Warning Box
+      const warnBox = document.getElementById("res-warning");
+      if (data.uncertainty_warning) {
+        warnBox.classList.remove("hidden");
+        document.getElementById("res-warning-text").textContent = data.uncertainty_warning;
+      } else {
+        warnBox.classList.add("hidden");
+      }
+
+      // Latencies
+      document.getElementById("lat-pre").textContent = `${data.latency_ms.preprocessing.toFixed(1)}ms`;
+      document.getElementById("lat-inf").textContent = `${data.latency_ms.inference.toFixed(1)}ms`;
+      document.getElementById("lat-post").textContent = `${data.latency_ms.postprocessing.toFixed(1)}ms`;
+      document.getElementById("lat-tot").textContent = `${data.latency_ms.total.toFixed(1)}ms`;
+
+      // Detections List
+      const detContainer = document.getElementById("detections-container");
+      const detList = document.getElementById("detections-list");
+      detList.innerHTML = "";
+      if (!isUnrecognized && data.detections && data.detections.length > 0) {
+        detContainer.classList.remove("hidden");
+        document.getElementById("det-count").textContent = data.detections.length;
+        data.detections.forEach((d) => {
+          const row = document.createElement("div");
+          row.className = "flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-100 text-xs";
+          row.innerHTML = `
+            <span class="font-semibold text-slate-800 capitalize">${d.class_name.replace(/_/g, " ")}</span>
+            <div class="flex items-center gap-2">
+              <span class="text-slate-500 font-mono">${(d.confidence * 100).toFixed(1)}%</span>
+              <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-slate-200 text-slate-700">${d.category}</span>
+            </div>
+          `;
+          detList.appendChild(row);
+        });
+      } else {
+        detContainer.classList.add("hidden");
+      }
+    }
+  </script>
+</body>
+</html>

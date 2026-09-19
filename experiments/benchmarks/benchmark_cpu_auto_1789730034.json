@@ -1,0 +1,58 @@
+{
+  "timestamp": "2026-09-18T11:13:54Z",
+  "device": "cpu",
+  "num_runs": 5,
+  "num_warmup": 2,
+  "target_species": "auto",
+  "throughput_fps": 2.1,
+  "e2e_latency": {
+    "mean_ms": 476.44,
+    "std_ms": 85.86,
+    "median_p50_ms": 475.79,
+    "p90_ms": 569.56,
+    "p95_ms": 595.4,
+    "p99_ms": 616.08,
+    "min_ms": 358.59,
+    "max_ms": 621.25
+  },
+  "preprocessing_latency": {
+    "mean_ms": 1.84,
+    "std_ms": 0.74,
+    "median_p50_ms": 1.47,
+    "p90_ms": 2.64,
+    "p95_ms": 2.97,
+    "p99_ms": 3.22,
+    "min_ms": 1.3,
+    "max_ms": 3.29
+  },
+  "inference_latency": {
+    "mean_ms": 474.06,
+    "std_ms": 85.7,
+    "median_p50_ms": 474.04,
+    "p90_ms": 566.72,
+    "p95_ms": 592.85,
+    "p99_ms": 613.76,
+    "min_ms": 356.71,
+    "max_ms": 618.99
+  },
+  "postprocessing_latency": {
+    "mean_ms": 0.03,
+    "std_ms": 0.01,
+    "median_p50_ms": 0.02,
+    "p90_ms": 0.04,
+    "p95_ms": 0.04,
+    "p99_ms": 0.05,
+    "min_ms": 0.02,
+    "max_ms": 0.05
+  },
+  "pipeline_total_latency": {
+    "mean_ms": 475.92,
+    "std_ms": 85.76,
+    "median_p50_ms": 475.37,
+    "p90_ms": 568.95,
+    "p95_ms": 594.73,
+    "p99_ms": 615.35,
+    "min_ms": 358.18,
+    "max_ms": 620.5
+  }
+}

@@ -1,0 +1,66 @@
+# Python & Environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+ENV/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# Datasets — Large media files are not committed to Git
+data/raw/*
+!data/raw/.gitkeep
+!data/raw/_archives/.gitkeep
+data/extracted/*
+!data/extracted/.gitkeep
+data/interim/*
+!data/interim/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+data/final/*
+!data/final/.gitkeep
+
+# Track Manifests & Build Reports
+!data/manifests/*.json
+data/manifests/*_scratch*.json
+
+# Model Weights & Training Runs
+models/**/*.pt
+models/**/*.torchscript
+models/**/*.onnx
+models/**/*.engine
+models/**/*.tflite
+models/*.pt
+models/*.onnx
+models/*.engine
+!models/pretrained/.gitkeep
+!models/checkpoints/.gitkeep
+runs/
+experiments/*/weights/
+experiments/*/*.pt
+experiments/batch_test*/
+
+# Secrets & Environment Variables
+.env
+.env.local
+*.key
+*.pem
+
+# Editor & OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.claude/
+.claude-omniroute/
+*.swp
+*.swo

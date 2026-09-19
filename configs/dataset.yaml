@@ -1,0 +1,139 @@
+# KrishiAI canonical dataset configuration.
+#
+# STATUS: FINALIZED for Phase 1.
+# Derived directly from physical dataset audit of raw datasets in data/raw/:
+#   1. basil_roboflow_v4: 5,096 images (YOLO Detection, 7 classes)
+#   2. mint_roboflow_v1: 3,533 images (YOLO Detection, 3 condition classes)
+#   3. aloevera_kaggle_v1: 2,500 original images in final/ (Folder Classification, 5 classes)
+#
+# Provenance and licenses:
+#   - Basil: Roboflow Universe (ramla/basil-disease-detection-luxy0/4), CC BY 4.0
+#   - Mint: Roboflow Universe (mint4/mint-disease4./1), CC BY 4.0
+#   - Aloe Vera: Kaggle (Aloe vera leaf disease detection dataset), Open Access
+
+datasets:
+  - dataset_id: basil_roboflow_v4
+    source: roboflow
+    source_url: https://universe.roboflow.com/ramla/basil-disease-detection-luxy0/dataset/4
+    license: CC BY 4.0
+    version: "v4"
+    local_path: data/raw/basil_roboflow_v4
+    task_type: detection
+    original_classes:
+      - bacterial_spot
+      - bug_spot
+      - downy_mildew
+      - healthy
+      - magnesium_deficiency
+      - nitrogen_deficiency
+      - powdery_mildew
+    image_count: 5096
+    object_count: 12298
+    notes: "YOLO detection dataset. Contains 105 cross-split duplicate groups requiring leakage prevention re-splitting."
+
+  - dataset_id: mint_roboflow_v1
+    source: roboflow
+    source_url: https://universe.roboflow.com/mint4/mint-disease4./dataset/1
+    license: CC BY 4.0
+    version: "v1"
+    local_path: data/raw/mint_roboflow_v1
+    task_type: detection
+    original_classes:
+      - "0" # Dried
+      - "1" # Fresh
+      - "2" # Spoiled
+    image_count: 3533
+    object_count: 3536
+    notes: "YOLO detection dataset. Class IDs 0, 1, 2 represent post-harvest conditions: Dried, Fresh, Spoiled."
+
+  - dataset_id: aloevera_kaggle_v1
+    source: kaggle
+    source_url: "https://www.kaggle.com/datasets (Aloe vera leaf disease detection dataset)"
+    license: Open Research / CC BY-SA
+    version: "v1"
+    local_path: data/raw/aloevera_kaggle_v1/final
+    task_type: classification
+    original_classes:
+      - "Aloe Rust"
+      - "Anthracnose"
+      - "Healthy"
+      - "Leaf Spot"
+      - "Sunburn"
+    image_count: 2500
+    object_count: 2500
+    notes: "Folder-based classification dataset. Contains 63 exact duplicate groups across classes requiring deduplication."
+
+taxonomy:
+  version: "1.0.0"
+  plant_species:
+    - basil
+    - aloe_vera
+    - mint
+
+  conditions:
+    # Diseases (Pathological)
+    diseases:
+      basil:
+        - bacterial_spot
+        - bug_spot
+        - downy_mildew
+        - powdery_mildew
+      aloe_vera:
+        - aloe_rust
+        - anthracnose
+        - leaf_spot
+      mint: []
+
+    # Nutrient Deficiencies (Physiological)
+    deficiencies:
+      basil:
+        - magnesium_deficiency
+        - nitrogen_deficiency
+      aloe_vera: []
+      mint: []
+
+    # Environmental / Physical / Post-Harvest Conditions
+    conditions_and_freshness:
+      aloe_vera:
+        - sunburn
+      mint:
+        - dried
+        - fresh
+        - spoiled
+
+    # Healthy States
+    healthy_states:
+      basil:
+        - healthy
+      aloe_vera:
+        - healthy
+      mint:
+        - fresh
+
+class_mapping:
+  basil_roboflow_v4:
+    bacterial_spot: "basil_bacterial_spot"
+    bug_spot: "basil_bug_spot"
+    downy_mildew: "basil_downy_mildew"
+    healthy: "basil_healthy"
+    magnesium_deficiency: "basil_magnesium_deficiency"
+    nitrogen_deficiency: "basil_nitrogen_deficiency"
+    powdery_mildew: "basil_powdery_mildew"
+
+  mint_roboflow_v1:
+    "0": "mint_dried"
+    "1": "mint_fresh"
+    "2": "mint_spoiled"
+    "0 (Dried)": "mint_dried"
+    "1 (Fresh)": "mint_fresh"
+    "2 (Spoiled)": "mint_spoiled"
+    "Dried": "mint_dried"
+    "Fresh": "mint_fresh"
+    "Spoiled": "mint_spoiled"
+
+  aloevera_kaggle_v1:
+    "Aloe Rust": "aloe_vera_rust"
+    "Anthracnose": "aloe_vera_anthracnose"
+    "Healthy": "aloe_vera_healthy"
+    "Leaf Spot": "aloe_vera_leaf_spot"
+    "Sunburn": "aloe_vera_sunburn"

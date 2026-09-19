@@ -1,0 +1,73 @@
+{
+  "datasets": [
+    {
+      "acquisition_date": "2026-08-03",
+      "annotation_format": "yolo",
+      "class_names": [
+        "bacterial_spot",
+        "bug_spot",
+        "downy_mildew",
+        "healthy",
+        "magnesium_deficiency",
+        "nitrogen_deficiency",
+        "powdery_mildew"
+      ],
+      "dataset_id": "basil_roboflow_v4",
+      "image_count": 5096,
+      "license": "CC BY 4.0",
+      "local_path": "data/raw/basil_roboflow_v4",
+      "notes": "Harmonized into data/final/detection. Polygons converted to bbox; scene-grouped 70/15/15 split.",
+      "object_count": 12298,
+      "preprocessing_status": "completed",
+      "source": "roboflow",
+      "source_url": "https://universe.roboflow.com/ramla/basil-disease-detection-luxy0/dataset/4",
+      "task_type": "detection",
+      "validation_status": "passed",
+      "version": "v4"
+    },
+    {
+      "acquisition_date": "2026-08-03",
+      "annotation_format": "yolo",
+      "class_names": [
+        "Dried",
+        "Fresh",
+        "Spoiled"
+      ],
+      "dataset_id": "mint_roboflow_v1",
+      "image_count": 3533,
+      "license": "CC BY 4.0",
+      "local_path": "data/raw/mint_roboflow_v1",
+      "notes": "Harmonized into data/final/detection (classes 7, 8, 9). Scene-grouped 70/15/15 split.",
+      "object_count": 3536,
+      "preprocessing_status": "completed",
+      "source": "roboflow",
+      "source_url": "https://universe.roboflow.com/mint4/mint-disease4./dataset/1",
+      "task_type": "detection",
+      "validation_status": "passed",
+      "version": "v1"
+    },
+    {
+      "acquisition_date": "2026-08-03",
+      "annotation_format": "classification_folders",
+      "class_names": [
+        "Aloe Rust",
+        "Anthracnose",
+        "Healthy",
+        "Leaf Spot",
+        "Sunburn"
+      ],
+      "dataset_id": "aloevera_kaggle_v1",
+      "image_count": 2500,
+      "license": "Open Research / CC BY-SA",
+      "local_path": "data/raw/aloevera_kaggle_v1/final",
+      "notes": "Harmonized into data/final/classification. 16 conflicting groups quarantined; 2,416 clean images split 70/15/15.",
+      "object_count": 2500,
+      "preprocessing_status": "completed",
+      "source": "kaggle",
+      "source_url": "https://www.kaggle.com/datasets (Aloe vera leaf disease detection dataset)",
+      "task_type": "classification",
+      "validation_status": "passed",
+      "version": "v1"
+    }
+  ]
+}

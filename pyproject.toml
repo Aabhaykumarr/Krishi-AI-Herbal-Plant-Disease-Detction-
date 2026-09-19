@@ -1,0 +1,48 @@
+[project]
+name = "krishiai"
+version = "0.1.0"
+description = "Multi-class herbal plant leaf disease/condition detection and classification (Basil, Aloe Vera, Mint) using Ultralytics YOLO26."
+requires-python = ">=3.10"
+dependencies = [
+    "pyyaml>=6.0",
+    "pillow>=10.0",
+    "numpy>=1.26",
+    "pandas>=2.0",
+]
+
+[project.optional-dependencies]
+# Needed for Month 1 (dataset audit / dedup) beyond the base deps above.
+data = [
+    "imagehash>=4.3",   # perceptual/near-duplicate hashing (Section 23)
+    "rarfile>=4.1",     # Aloe Vera archive extraction (Section 17) — also
+                        # needs a system 'unrar' or 'unar' binary on PATH
+]
+# Needed starting Month 1 Weeks 3-4 (baseline training) and Month 2.
+# Verified against docs.ultralytics.com/models/yolo26 this session:
+# `from ultralytics import YOLO; YOLO("yolo26n.pt")` / "yolo26n-cls.pt" for
+# classification. Pin an exact version once installed (docs/decisions.md D-006).
+train = [
+    "ultralytics>=8.4",
+    "torch>=2.2",
+]
+# Needed starting Month 3.
+api = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "python-multipart>=0.0.9",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

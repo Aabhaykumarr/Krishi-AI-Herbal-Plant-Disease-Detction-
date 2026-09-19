@@ -1,0 +1,24 @@
+# Baseline training configuration TEMPLATE (Section 33).
+#
+# STATUS: placeholder. This cannot be run yet: data/final/dataset.yaml does
+# not exist until Phase 1 dataset construction is complete (see
+# docs/decisions.md D-003 and docs/roadmap.md), and `task` below is
+# deliberately null until that decision is made.
+#
+# Checkpoint naming confirmed against docs.ultralytics.com/models/yolo26 and
+# docs.ultralytics.com/tasks/classify this session — pin the exact installed
+# `ultralytics` version before your first real run (docs/decisions.md D-006).
+
+model: yolo26n.pt           # detection default; use yolo26n-cls.pt if D-003 resolves to classification
+task: null                   # "detect" | "classify" | "segment" — set once docs/decisions.md D-003 is resolved
+data: data/final/dataset.yaml
+epochs: 100
+imgsz: 640                   # revisit per Section 28 once real leaf/image sizes are known
+batch: 16                    # tune to RTX 4050 VRAM (Section 13); reduce on CUDA OOM
+device: auto
+patience: 20
+seed: 42
+optimizer: auto
+workers: 4
+project: experiments
+name: exp_001_baseline
