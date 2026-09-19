@@ -44,6 +44,10 @@ models/*.onnx
 models/*.engine
 !models/pretrained/.gitkeep
 !models/checkpoints/.gitkeep
+!models/checkpoints/krishiai_leaf_classifier_balanced/best.pt
+!models/checkpoints/krishiai_yolo26_det_baseline/best.pt
+!models/pretrained/yolo26n.pt
+!models/pretrained/yolo26n-cls.pt
 runs/
 experiments/*/weights/
 experiments/*/*.pt
