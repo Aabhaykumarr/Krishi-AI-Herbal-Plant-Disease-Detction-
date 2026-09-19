@@ -12,8 +12,11 @@ build/
 .env
 .venv/
 venv/
-data/raw/
-data/extracted/
-data/interim/
+data/
+Papers/
+docs/
+experiments/
 runs/
 .claude/
+.claude-omniroute/
+
