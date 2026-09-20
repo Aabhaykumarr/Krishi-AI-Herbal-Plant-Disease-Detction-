@@ -9,6 +9,7 @@ ENV PYTHONUNBUFFERED=1 \
     MODEL_DEVICE=cpu \
     OMP_NUM_THREADS=1 \
     MKL_NUM_THREADS=1 \
+    TORCH_NUM_THREADS=1 \
     YOLO_CONFIG_DIR=/tmp/Ultralytics
 
 # Install runtime OS dependencies for OpenCV / PIL
@@ -41,5 +42,5 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
 
 # Start FastAPI server (supports dynamic Render/Cloud $PORT)
-CMD ["sh", "-c", "uvicorn krishiai.api.app:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]
+CMD ["sh", "-c", "uvicorn krishiai.api.app:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --timeout-keep-alive 65"]
 

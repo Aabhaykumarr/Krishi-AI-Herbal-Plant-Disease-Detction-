@@ -1,6 +1,7 @@
 """FastAPI HTTP service for KrishiAI leaf disease detection and classification (Section 51)."""
 from __future__ import annotations
 
+import asyncio
 import io
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -52,11 +53,17 @@ def create_app() -> FastAPI:
         app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
     @app.get("/", response_class=HTMLResponse)
-    async def index() -> str:
+    async def index() -> HTMLResponse:
         index_file = Path("static/index.html")
-        if index_file.exists():
-            return index_file.read_text(encoding="utf-8")
-        return "<h1>KrishiAI API is Running.</h1><p>Visit <a href='/docs'>/docs</a> for Swagger UI.</p>"
+        content = index_file.read_text(encoding="utf-8") if index_file.exists() else "<h1>KrishiAI API is Running.</h1><p>Visit <a href='/docs'>/docs</a> for Swagger UI.</p>"
+        return HTMLResponse(
+            content=content,
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            },
+        )
 
     @app.get("/health", status_code=status.HTTP_200_OK)
     async def health_check() -> Dict[str, Any]:
@@ -133,9 +140,10 @@ def create_app() -> FastAPI:
             content = await file.read()
             raw_img = Image.open(io.BytesIO(content))
             img = ImageOps.exif_transpose(raw_img).convert("RGB")
-            # Downscale large mobile/camera images to prevent memory exhaustion on cloud containers
-            if max(img.size) > 1280:
-                img.thumbnail((1280, 1280), Image.Resampling.LANCZOS)
+            # Downscale image to standardized 640px to eliminate high memory allocations on cloud containers
+            if max(img.size) > 640:
+                img.thumbnail((640, 640), Image.Resampling.LANCZOS)
+            del content, raw_img
         except Exception as exc:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -144,7 +152,8 @@ def create_app() -> FastAPI:
 
         mm = get_model_manager()
         try:
-            resp = mm.predict(
+            resp = await asyncio.to_thread(
+                mm.predict,
                 image=img,
                 plant_species=plant_species,
                 conf=confidence_threshold,

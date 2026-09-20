@@ -376,32 +376,35 @@
     confSlider.addEventListener("input", (e) => confVal.textContent = parseFloat(e.target.value).toFixed(2));
     iouSlider.addEventListener("input", (e) => iouVal.textContent = parseFloat(e.target.value).toFixed(2));
 
-    // Health Check on Load
+    // Health Check on Load & Recovery
     async function checkHealth() {
       try {
         const res = await fetch("/health");
-        if (res.ok) {
-          const data = await res.json();
+        const raw = await res.text();
+        let data = null;
+        try { data = JSON.parse(raw); } catch (e) {}
+        if (res.ok && data) {
           statusDot.className = "w-2 h-2 rounded-full bg-emerald-500";
-          statusText.textContent = `Online (${data.models.device.toUpperCase()})`;
+          statusText.textContent = `Online (${(data.models && data.models.device ? data.models.device : "CPU").toUpperCase()})`;
         } else {
           throw new Error();
         }
       } catch (err) {
-        statusDot.className = "w-2 h-2 rounded-full bg-rose-500";
-        statusText.textContent = "Offline";
+        statusDot.className = "w-2 h-2 rounded-full bg-amber-500 animate-pulse";
+        statusText.textContent = "Warming up...";
       }
     }
     checkHealth();
+    setInterval(checkHealth, 15000);
 
-    // Client-side image compression & optimization (Resizes massive mobile photos to prevent OOM & network latency)
+    // Client-side image compression & optimization (Resizes massive mobile/desktop photos to 640px to eliminate OOM & network latency)
     async function optimizeImageForInference(file) {
       return new Promise((resolve) => {
         const reader = new FileReader();
         reader.onload = (e) => {
           const img = new Image();
           img.onload = () => {
-            const MAX_DIMENSION = 1280;
+            const MAX_DIMENSION = 640;
             let width = img.naturalWidth || img.width;
             let height = img.naturalHeight || img.height;
 
@@ -424,7 +427,7 @@
             canvas.toBlob(
               (blob) => {
                 if (!blob) {
-                  resolve({ file, img, dataUrl: e.target.result });
+                  resolve({ file, img, dataUrl: e.target.result, width, height, sizeKb: Math.round(file.size / 1024) });
                   return;
                 }
                 const optimizedFile = new File([blob], "leaf_input.jpg", {
@@ -439,7 +442,7 @@
                 optimizedImg.src = optimizedUrl;
               },
               "image/jpeg",
-              0.88
+              0.85
             );
           };
           img.onerror = () => resolve({ file, img: null, dataUrl: e.target.result });
@@ -583,38 +586,38 @@
             body: formData,
           });
         } catch (netErr) {
-          throw new Error("Network connection failed. Please check your internet connection.");
+          throw new Error("Network connection failed. If the server was asleep, please give it 10-20 seconds to wake up and try again.");
+        }
+
+        // Always read the response body once as text to prevent stream consumption and JSON parse crashes
+        const rawText = await response.text();
+        let data = null;
+        try {
+          data = JSON.parse(rawText);
+        } catch (e) {
+          data = null;
         }
 
         if (!response.ok) {
           let errorMsg = `Inference failed (HTTP ${response.status})`;
-          try {
-            const errJson = await response.json();
-            if (errJson && errJson.detail) errorMsg = errJson.detail;
-          } catch (jsonErr) {
-            try {
-              const errText = await response.text();
-              if (errText && errText.trim().length > 0 && errText.length < 300) {
-                errorMsg = errText.trim();
-              } else if (response.status === 502 || response.status === 503 || response.status === 504) {
-                errorMsg = "Server is starting up or temporarily busy. Please tap 'Run Disease Diagnosis' again.";
-              }
-            } catch (textErr) {}
+          if (data && data.detail) {
+            errorMsg = data.detail;
+          } else if (response.status === 502 || response.status === 503 || response.status === 504) {
+            errorMsg = "Render cloud server is starting up or temporarily busy. Please tap 'Run Disease Diagnosis' again.";
+          } else if (rawText && rawText.trim().length > 0 && rawText.length < 250) {
+            errorMsg = rawText.trim();
           }
           throw new Error(errorMsg);
         }
 
-        let data;
-        try {
-          data = await response.json();
-        } catch (parseErr) {
-          throw new Error("Received an unexpected response from the server. Please try again.");
+        if (!data) {
+          throw new Error("Received an unexpected empty response from the server. The server may have restarted; please try again.");
         }
 
         renderResults(data);
       } catch (err) {
         console.error("Diagnosis error:", err);
-        showAlert("Diagnosis Error", err.message);
+        showAlert("Diagnosis Error", err.message || "An unexpected error occurred during analysis.");
       } finally {
         loadingOverlay.classList.add("hidden");
         btnPredict.disabled = false;

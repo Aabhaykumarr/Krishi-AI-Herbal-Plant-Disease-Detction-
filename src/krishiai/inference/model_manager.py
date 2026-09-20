@@ -1,6 +1,7 @@
 """ModelManager: Unified Inference Gateway for KrishiAI (Section 51 & Decision D-007)."""
 from __future__ import annotations
 
+import gc
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -21,6 +22,12 @@ from krishiai.training.trainer import get_optimal_device
 from krishiai.utils.logging import get_logger
 
 logger = get_logger(__name__)
+
+# Configure CPU execution limits to minimize memory and latency in cloud containers
+try:
+    torch.set_num_threads(1)
+except Exception:
+    pass
 
 
 def infer_category(class_name: str) -> str:
@@ -57,30 +64,30 @@ def is_botanical_image(pil_img: Image.Image) -> tuple[bool, str]:
     """
     img_rgb = pil_img.convert("RGB")
 
+    # Standardized 256x256 thumbnail for texture, edges, and rectilinearity
+    thumb_256 = img_rgb.resize((256, 256), Image.Resampling.BILINEAR)
+    arr_256 = np.array(thumb_256, dtype=np.float32)
+
     # 1. Texture Variance Check (Rejects flat solid colors, blank screens, synthetic blocks)
-    # Computed on a standardized 256x256 thumbnail for zero memory overhead and fast execution
-    thumb_tex = img_rgb.resize((256, 256))
-    arr_tex = np.array(thumb_tex, dtype=np.float32)
-    std_channels = np.std(arr_tex, axis=(0, 1))
+    std_channels = np.std(arr_256, axis=(0, 1))
     mean_std = float(np.mean(std_channels))
     if mean_std < 6.0:
         return False, f"Flat or solid-color image detected (Texture variance={mean_std:.1f} < 6.0)."
 
+    # Convert 256 thumbnail to grayscale
+    gray_256 = np.dot(arr_256[..., :3], [0.2989, 0.5870, 0.1140]).astype(np.float32)
+
     # 2. Spatial Autocorrelation Check (Rejects synthetic noise / scrambled pixels)
-    gray = np.array(img_rgb.convert("L").resize((128, 128)), dtype=np.float32)
-    var_gray = np.var(gray)
+    gray_128 = gray_256[::2, ::2]
+    var_gray = float(np.var(gray_128))
     if var_gray > 1.0:
-        corr_x = np.corrcoef(gray[:, :-1].flatten(), gray[:, 1:].flatten())[0, 1]
-        corr_y = np.corrcoef(gray[:-1, :].flatten(), gray[1:, :].flatten())[0, 1]
+        corr_x = np.corrcoef(gray_128[:, :-1].flatten(), gray_128[:, 1:].flatten())[0, 1]
+        corr_y = np.corrcoef(gray_128[:-1, :].flatten(), gray_128[1:, :].flatten())[0, 1]
         mean_corr = float((corr_x + corr_y) / 2.0)
         if mean_corr < 0.40:
             return False, f"Synthetic noise or non-natural texture detected (Spatial correlation={mean_corr:.2f} < 0.40)."
 
     # 3. Geometric Rectilinearity & Man-Made Circuit / Device Check
-    # Natural biological foliage has isotropic, curved, non-orthogonal edge distributions.
-    # Man-made objects (electronic trainer kits, PCBs, breadboards, chips, keyboards, screens, desks)
-    # have strong dominant orthogonal horizontal/vertical edges (0, 90, 180, 270 degrees).
-    gray_256 = np.array(img_rgb.convert("L").resize((256, 256)), dtype=np.float32)
     gx = (gray_256[:-2, 2:] + 2 * gray_256[1:-1, 2:] + gray_256[2:, 2:]) - (gray_256[:-2, :-2] + 2 * gray_256[1:-1, :-2] + gray_256[2:, :-2])
     gy = (gray_256[2:, :-2] + 2 * gray_256[2:, 1:-1] + gray_256[2:, 2:]) - (gray_256[:-2, :-2] + 2 * gray_256[:-2, 1:-1] + gray_256[:-2, 2:])
     mag = np.hypot(gx, gy)
@@ -96,9 +103,8 @@ def is_botanical_image(pil_img: Image.Image) -> tuple[bool, str]:
         if ortho_ratio > 0.46:
             return False, f"Synthetic / Manufactured object detected ({ortho_ratio*100:.1f}% rectilinear horizontal/vertical edges)."
 
-    # 4. Botanical / Vegetative Spectral Indexing
-    thumb = img_rgb.resize((128, 128))
-    arr = np.array(thumb, dtype=np.float32) / 255.0
+    # 4. Botanical / Vegetative Spectral Indexing (Subsampled to 128 for speed & memory)
+    arr = arr_256[::2, ::2] / 255.0
     r, g, b = arr[:, :, 0], arr[:, :, 1], arr[:, :, 2]
 
     cmax = np.max(arr, axis=2)
@@ -146,6 +152,49 @@ def is_botanical_image(pil_img: Image.Image) -> tuple[bool, str]:
         (np.abs(r - g) < 0.22) &
         (hue >= 20.0) & (hue <= 75.0)
     )
+
+    green_ratio = float(np.mean(is_green_foliage))
+    pathology_ratio = float(np.mean(is_pathology_foliage))
+    dried_ratio = float(np.mean(is_dried_herb))
+    foliage_ratio = green_ratio + pathology_ratio
+
+    # 5. Out-of-Distribution Non-Botanical Rejection Filters
+    is_neutral_bg = (np.abs(r - g) < 0.05) & (np.abs(g - b) < 0.05) & (cmax > 0.60)
+    neutral_bg_ratio = float(np.mean(is_neutral_bg))
+
+    is_skin = (r > g) & (g > b) & (r > 0.35) & (r < 0.95) & (hue >= 8.0) & (hue <= 32.0) & (sat >= 0.15) & (sat <= 0.55)
+    skin_ratio = float(np.mean(is_skin))
+
+    is_sky_blue = (hue >= 185.0) & (hue <= 255.0) & (sat > 0.18)
+    blue_ratio = float(np.mean(is_sky_blue))
+
+    is_purple = (hue >= 260.0) & (hue <= 340.0) & (sat > 0.18)
+    purple_ratio = float(np.mean(is_purple))
+
+    is_red = ((hue >= 345.0) | (hue <= 12.0)) & (sat > 0.30) & (r > 1.30 * g)
+    red_ratio = float(np.mean(is_red))
+
+    if neutral_bg_ratio > 0.70 and green_ratio < 0.04 and dried_ratio < 0.25:
+        return False, f"Document / Plain surface detected ({neutral_bg_ratio*100:.1f}% neutral background)."
+    if skin_ratio > 0.40 and green_ratio < 0.04:
+        return False, f"Human subject / portrait detected ({skin_ratio*100:.1f}% skin tones)."
+    if blue_ratio > 0.50 and green_ratio < 0.04:
+        return False, f"Sky / Blue surface detected ({blue_ratio*100:.1f}% blue)."
+    if purple_ratio > 0.25 and green_ratio < 0.04:
+        return False, f"Non-foliar purple/magenta surface detected ({purple_ratio*100:.1f}% purple)."
+    if red_ratio > 0.35 and green_ratio < 0.04:
+        return False, f"Non-foliar red/orange surface detected ({red_ratio*100:.1f}% red)."
+
+    # 6. Core Botanical Vegetation Presence Requirement
+    has_active_green = green_ratio >= 0.040
+    has_pathology_with_green = (green_ratio >= 0.015) and (foliage_ratio >= 0.060)
+    has_dried_herb = (dried_ratio >= 0.30) and (neutral_bg_ratio >= 0.15 or green_ratio >= 0.005) and (skin_ratio < 0.25)
+
+    if not (has_active_green or has_pathology_with_green or has_dried_herb):
+        return False, f"No authentic botanical foliage or vegetative chlorophyll detected ({green_ratio*100:.1f}% green foliage)."
+
+    return True, "Valid botanical visual signatures."
+
 
     green_ratio = float(np.mean(is_green_foliage))
     pathology_ratio = float(np.mean(is_pathology_foliage))
@@ -294,9 +343,9 @@ class ModelManager:
         else:
             raise TypeError(f"Unsupported image input type: {type(image)}")
 
-        # Safeguard: resize overly large camera captures to max 1280px to prevent memory spikes
-        if max(pil_img.size) > 1280:
-            pil_img.thumbnail((1280, 1280), Image.Resampling.LANCZOS)
+        # Standardize input image size to max 640px for inference & gating (optimal for YOLO & memory safety)
+        if max(pil_img.size) > 640:
+            pil_img.thumbnail((640, 640), Image.Resampling.LANCZOS)
 
         t1 = time.perf_counter()
         preproc_ms = (t1 - t0) * 1000.0
@@ -322,45 +371,60 @@ class ModelManager:
             )
 
         # Step 3: Hierarchical Dual-Pipeline Execution
-        # If species is explicitly aloe_vera and cls_model exists -> prioritize classification
-        if plant_species == "aloe_vera" and self.cls_model is not None:
-            return self._predict_classification(pil_img, preproc_ms, t1, active_conf, requested_species=plant_species)
+        try:
+            # If species is explicitly aloe_vera and cls_model exists -> prioritize classification directly
+            if plant_species == "aloe_vera" and self.cls_model is not None:
+                return self._predict_classification(
+                    pil_img, preproc_ms, t1, active_conf, requested_species=plant_species
+                )
 
-        # Run classification analysis to assess herbal species-level evidence
-        cls_species_mass = 0.0
-        dominant_species = "unknown"
-        if self.cls_model is not None:
-            with torch.inference_mode():
-                cls_check = self.cls_model.predict(source=pil_img, device=self.device, verbose=False)[0]
-            names = cls_check.names
-            probs = cls_check.probs.data.cpu().numpy()
-            aloe_indices = [i for i, n in (names.items() if isinstance(names, dict) else enumerate(names)) if "aloe" in n]
-            basil_indices = [i for i, n in (names.items() if isinstance(names, dict) else enumerate(names)) if "basil" in n]
-            mint_indices = [i for i, n in (names.items() if isinstance(names, dict) else enumerate(names)) if "mint" in n]
-            p_aloe = float(np.sum(probs[aloe_indices]))
-            p_basil = float(np.sum(probs[basil_indices]))
-            p_mint = float(np.sum(probs[mint_indices]))
-            cls_species_mass = max(p_aloe, p_basil, p_mint)
-            dominant_species = "aloe_vera" if p_aloe == cls_species_mass else ("basil" if p_basil == cls_species_mass else "mint")
+            # Run classification analysis if available to assess species and whole-leaf characteristics
+            cls_results = None
+            dominant_species = "unknown"
+            p_aloe = 0.0
 
-            # If the image is Aloe Vera and not Basil/Mint -> route directly to classification
-            if dominant_species == "aloe_vera" and p_aloe >= 0.55 and (plant_species is None or plant_species == "aloe_vera"):
-                return self._predict_classification(pil_img, preproc_ms, t1, active_conf, requested_species="aloe_vera")
+            if self.cls_model is not None:
+                with torch.inference_mode():
+                    cls_results = self.cls_model.predict(
+                        source=pil_img, imgsz=224, device=self.device, verbose=False
+                    )[0]
+                names = cls_results.names
+                probs = cls_results.probs.data.cpu().numpy()
+                aloe_indices = [i for i, n in (names.items() if isinstance(names, dict) else enumerate(names)) if "aloe" in n]
+                basil_indices = [i for i, n in (names.items() if isinstance(names, dict) else enumerate(names)) if "basil" in n]
+                mint_indices = [i for i, n in (names.items() if isinstance(names, dict) else enumerate(names)) if "mint" in n]
+                p_aloe = float(np.sum(probs[aloe_indices])) if aloe_indices else 0.0
+                p_basil = float(np.sum(probs[basil_indices])) if basil_indices else 0.0
+                p_mint = float(np.sum(probs[mint_indices])) if mint_indices else 0.0
+                cls_species_mass = max(p_aloe, p_basil, p_mint)
+                dominant_species = "aloe_vera" if p_aloe == cls_species_mass else ("basil" if p_basil == cls_species_mass else "mint")
 
-        # For Basil, Mint, or general: try object detection for localized symptoms
-        det_resp = None
-        if self.det_model is not None:
-            det_resp = self._predict_detection(pil_img, preproc_ms, t1, active_conf, active_iou, requested_species=plant_species)
-            if det_resp.detections and len(det_resp.detections) > 0 and det_resp.primary_condition != "no_detections" and det_resp.confidence >= 0.30:
+                # If the image is Aloe Vera and not Basil/Mint -> route directly to classification using already-computed results
+                if dominant_species == "aloe_vera" and p_aloe >= 0.55 and (plant_species is None or plant_species == "aloe_vera"):
+                    return self._predict_classification(
+                        pil_img, preproc_ms, t1, active_conf, requested_species="aloe_vera", precomputed_results=cls_results
+                    )
+
+            # For Basil, Mint, or general: try object detection for localized symptoms
+            det_resp = None
+            if self.det_model is not None:
+                det_resp = self._predict_detection(
+                    pil_img, preproc_ms, t1, active_conf, active_iou, requested_species=plant_species
+                )
+                if det_resp.detections and len(det_resp.detections) > 0 and det_resp.primary_condition != "no_detections" and det_resp.confidence >= 0.30:
+                    return det_resp
+
+            # Fallback to fine-grained 15-class leaf classifier using precomputed results
+            if self.cls_model is not None:
+                return self._predict_classification(
+                    pil_img, preproc_ms, t1, active_conf, requested_species=plant_species, precomputed_results=cls_results
+                )
+            elif det_resp is not None:
                 return det_resp
-
-        # Fallback to fine-grained 15-class leaf classifier
-        if self.cls_model is not None:
-            return self._predict_classification(pil_img, preproc_ms, t1, active_conf, requested_species=plant_species)
-        elif det_resp is not None:
-            return det_resp
-        else:
-            raise RuntimeError("No model is loaded in ModelManager.")
+            else:
+                raise RuntimeError("No model is loaded in ModelManager.")
+        finally:
+            gc.collect()
 
     def _predict_detection(
         self,
@@ -374,10 +438,12 @@ class ModelManager:
         with torch.inference_mode():
             results = self.det_model.predict(
                 source=img,
+                imgsz=640,
                 conf=conf,
                 iou=iou,
                 device=self.device,
                 verbose=False,
+                max_det=10,
             )[0]
 
         t2 = time.perf_counter()
@@ -460,13 +526,18 @@ class ModelManager:
         t_start_infer: float,
         conf: float,
         requested_species: Optional[str] = None,
+        precomputed_results: Optional[Any] = None,
     ) -> PredictionResponse:
-        with torch.inference_mode():
-            results = self.cls_model.predict(
-                source=img,
-                device=self.device,
-                verbose=False,
-            )[0]
+        if precomputed_results is not None:
+            results = precomputed_results
+        else:
+            with torch.inference_mode():
+                results = self.cls_model.predict(
+                    source=img,
+                    imgsz=224,
+                    device=self.device,
+                    verbose=False,
+                )[0]
 
         t2 = time.perf_counter()
         infer_ms = (t2 - t_start_infer) * 1000.0
