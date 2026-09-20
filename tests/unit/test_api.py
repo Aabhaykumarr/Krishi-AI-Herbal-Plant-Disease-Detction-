@@ -67,3 +67,20 @@ def test_predict_endpoint_invalid_file_type(client):
     response = client.post("/predict", files=files)
     assert response.status_code == 400
     assert "Invalid file type" in response.json()["detail"]
+
+
+def test_predict_endpoint_large_mobile_image(client):
+    # Simulate high-resolution camera photo from smartphone (e.g. 3000x2000)
+    img = Image.new("RGB", (3000, 2000), color=(40, 160, 40))
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    buf.seek(0)
+
+    files = {"file": ("mobile_camera_photo.jpg", buf, "image/jpeg")}
+    response = client.post("/predict", files=files)
+    assert response.status_code == 200
+    data = response.json()
+    assert "request_id" in data
+    assert "primary_condition" in data
+    assert "latency_ms" in data
+

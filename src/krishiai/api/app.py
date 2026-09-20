@@ -9,7 +9,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from PIL import Image
+from PIL import Image, ImageOps
 
 from krishiai.config.settings import Settings
 from krishiai.inference.model_manager import ModelManager
@@ -119,7 +119,11 @@ def create_app() -> FastAPI:
         iou_threshold: Optional[float] = Form(None),
     ) -> Dict[str, Any]:
         """Runs disease detection / classification prediction on an uploaded leaf image."""
-        if not file.content_type or not file.content_type.startswith("image/"):
+        content_type = (file.content_type or "").lower()
+        if content_type and not (
+            content_type.startswith("image/")
+            or content_type in ("application/octet-stream", "binary/octet-stream")
+        ):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid file type '{file.content_type}'. Please upload an image file (JPEG, PNG, WebP).",
@@ -127,7 +131,11 @@ def create_app() -> FastAPI:
 
         try:
             content = await file.read()
-            img = Image.open(io.BytesIO(content)).convert("RGB")
+            raw_img = Image.open(io.BytesIO(content))
+            img = ImageOps.exif_transpose(raw_img).convert("RGB")
+            # Downscale large mobile/camera images to prevent memory exhaustion on cloud containers
+            if max(img.size) > 1280:
+                img.thumbnail((1280, 1280), Image.Resampling.LANCZOS)
         except Exception as exc:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

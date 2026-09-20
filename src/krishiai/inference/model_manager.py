@@ -6,7 +6,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
-from PIL import Image
+import torch
+from PIL import Image, ImageOps
 from ultralytics import YOLO
 
 from krishiai.config.settings import Settings
@@ -57,8 +58,10 @@ def is_botanical_image(pil_img: Image.Image) -> tuple[bool, str]:
     img_rgb = pil_img.convert("RGB")
 
     # 1. Texture Variance Check (Rejects flat solid colors, blank screens, synthetic blocks)
-    arr_full = np.array(img_rgb, dtype=np.float32)
-    std_channels = np.std(arr_full, axis=(0, 1))
+    # Computed on a standardized 256x256 thumbnail for zero memory overhead and fast execution
+    thumb_tex = img_rgb.resize((256, 256))
+    arr_tex = np.array(thumb_tex, dtype=np.float32)
+    std_channels = np.std(arr_tex, axis=(0, 1))
     mean_std = float(np.mean(std_channels))
     if mean_std < 6.0:
         return False, f"Flat or solid-color image detected (Texture variance={mean_std:.1f} < 6.0)."
@@ -282,13 +285,18 @@ class ModelManager:
             img_path = Path(image)
             if not img_path.exists():
                 raise FileNotFoundError(f"Input image not found: {img_path}")
-            pil_img = Image.open(img_path).convert("RGB")
+            raw_img = Image.open(img_path)
+            pil_img = ImageOps.exif_transpose(raw_img).convert("RGB")
         elif isinstance(image, np.ndarray):
             pil_img = Image.fromarray(image).convert("RGB")
         elif isinstance(image, Image.Image):
-            pil_img = image.convert("RGB")
+            pil_img = ImageOps.exif_transpose(image).convert("RGB")
         else:
             raise TypeError(f"Unsupported image input type: {type(image)}")
+
+        # Safeguard: resize overly large camera captures to max 1280px to prevent memory spikes
+        if max(pil_img.size) > 1280:
+            pil_img.thumbnail((1280, 1280), Image.Resampling.LANCZOS)
 
         t1 = time.perf_counter()
         preproc_ms = (t1 - t0) * 1000.0
@@ -322,7 +330,8 @@ class ModelManager:
         cls_species_mass = 0.0
         dominant_species = "unknown"
         if self.cls_model is not None:
-            cls_check = self.cls_model.predict(source=pil_img, device=self.device, verbose=False)[0]
+            with torch.inference_mode():
+                cls_check = self.cls_model.predict(source=pil_img, device=self.device, verbose=False)[0]
             names = cls_check.names
             probs = cls_check.probs.data.cpu().numpy()
             aloe_indices = [i for i, n in (names.items() if isinstance(names, dict) else enumerate(names)) if "aloe" in n]
@@ -362,13 +371,14 @@ class ModelManager:
         iou: float,
         requested_species: Optional[str] = None,
     ) -> PredictionResponse:
-        results = self.det_model.predict(
-            source=img,
-            conf=conf,
-            iou=iou,
-            device=self.device,
-            verbose=False,
-        )[0]
+        with torch.inference_mode():
+            results = self.det_model.predict(
+                source=img,
+                conf=conf,
+                iou=iou,
+                device=self.device,
+                verbose=False,
+            )[0]
 
         t2 = time.perf_counter()
         infer_ms = (t2 - t_start_infer) * 1000.0
@@ -451,11 +461,12 @@ class ModelManager:
         conf: float,
         requested_species: Optional[str] = None,
     ) -> PredictionResponse:
-        results = self.cls_model.predict(
-            source=img,
-            device=self.device,
-            verbose=False,
-        )[0]
+        with torch.inference_mode():
+            results = self.cls_model.predict(
+                source=img,
+                device=self.device,
+                verbose=False,
+            )[0]
 
         t2 = time.perf_counter()
         infer_ms = (t2 - t_start_infer) * 1000.0

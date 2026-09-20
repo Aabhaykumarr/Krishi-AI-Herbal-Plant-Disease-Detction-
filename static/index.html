@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>KrishiAI — Herbal Leaf Disease Detection & Diagnostics</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11,68 +11,87 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
     body { font-family: 'Plus Jakarta Sans', sans-serif; }
-    .glass-panel { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); }
+    .glass-panel { background: rgba(255, 255, 255, 0.88); backdrop-filter: blur(12px); }
     .custom-shadow { box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05), 0 20px 25px -5px rgba(0, 0, 0, 0.04); }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased">
 
   <!-- Header -->
-  <header class="sticky top-0 z-50 glass-panel border-b border-slate-200/80 px-6 py-4 shadow-sm">
+  <header class="sticky top-0 z-50 glass-panel border-b border-slate-200/80 px-4 sm:px-6 py-3.5 shadow-sm">
     <div class="max-w-7xl mx-auto flex items-center justify-between">
       <div class="flex items-center space-x-3">
         <div class="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
           <i data-lucide="sprout" class="w-6 h-6"></i>
         </div>
         <div>
-          <h1 class="text-xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+          <h1 class="text-lg sm:text-xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
             Krishi<span class="text-emerald-600">AI</span>
-            <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">YOLO26 v1.0</span>
+            <span class="text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">YOLO26 v1.0</span>
           </h1>
-          <p class="text-xs text-slate-500">Herbal Plant Leaf Disease Detection & Multi-Class Classification</p>
+          <p class="text-[11px] sm:text-xs text-slate-500 hidden sm:block">Herbal Plant Leaf Disease Detection & Multi-Class Classification</p>
         </div>
       </div>
 
-      <div class="flex items-center space-x-4">
-        <div id="system-status" class="flex items-center space-x-2 text-xs font-medium px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+      <div class="flex items-center space-x-2 sm:space-x-4">
+        <div id="system-status" class="flex items-center space-x-2 text-[11px] sm:text-xs font-medium px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
           <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse" id="status-dot"></span>
-          <span id="status-text">Connecting to API...</span>
+          <span id="status-text">Connecting...</span>
         </div>
-        <a href="/docs" target="_blank" class="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition flex items-center gap-1.5">
+        <a href="/docs" target="_blank" class="text-xs font-medium px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition flex items-center gap-1.5">
           <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
-          API Docs
+          <span class="hidden sm:inline">API Docs</span>
         </a>
       </div>
     </div>
   </header>
 
   <!-- Main Container -->
-  <main class="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8">
 
     <!-- Left Column: Controls & Input -->
     <div class="lg:col-span-5 space-y-6">
 
       <!-- Upload Card -->
-      <div class="bg-white rounded-2xl p-6 border border-slate-200/80 custom-shadow">
+      <div class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 custom-shadow">
         <h2 class="text-base font-bold text-slate-900 mb-1 flex items-center gap-2">
           <i data-lucide="upload-cloud" class="w-5 h-5 text-emerald-600"></i>
           Leaf Image Ingestion
         </h2>
-        <p class="text-xs text-slate-500 mb-4">Upload a high-resolution photo of a Basil, Aloe Vera, or Mint leaf.</p>
+        <p class="text-xs text-slate-500 mb-4">Capture or upload a photo of a Basil, Aloe Vera, or Mint leaf.</p>
+
+        <!-- Hidden file inputs (Gallery & Camera) -->
+        <input type="file" id="file-input" class="hidden" accept="image/*" />
+        <input type="file" id="camera-input" class="hidden" accept="image/*" capture="environment" />
 
         <!-- Dropzone -->
-        <div id="dropzone" class="border-2 border-dashed border-slate-300 hover:border-emerald-500 bg-slate-50/50 hover:bg-emerald-50/20 rounded-xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[190px]">
-          <input type="file" id="file-input" class="hidden" accept="image/jpeg,image/png,image/webp" />
-          <div id="dropzone-empty" class="flex flex-col items-center">
+        <div id="dropzone" class="border-2 border-dashed border-slate-300 hover:border-emerald-500 bg-slate-50/50 hover:bg-emerald-50/20 rounded-xl p-5 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[170px]">
+
+          <div id="dropzone-empty" class="flex flex-col items-center w-full">
             <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-3">
               <i data-lucide="image-plus" class="w-6 h-6"></i>
             </div>
             <p class="text-sm font-semibold text-slate-700">Click to upload or drag & drop</p>
-            <p class="text-xs text-slate-400 mt-1">JPEG, PNG, or WebP up to 15MB</p>
+            <p class="text-xs text-slate-400 mt-1">Mobile photos auto-optimized for cloud inference</p>
+
+            <!-- Quick Action Buttons for Mobile & Desktop -->
+            <div class="flex items-center gap-2 mt-4 w-full max-w-xs">
+              <button type="button" id="btn-camera" class="flex-1 py-2 px-3 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex items-center justify-center gap-1.5 transition">
+                <i data-lucide="camera" class="w-3.5 h-3.5"></i>
+                Take Photo
+              </button>
+              <button type="button" id="btn-gallery" class="flex-1 py-2 px-3 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 flex items-center justify-center gap-1.5 transition">
+                <i data-lucide="folder-open" class="w-3.5 h-3.5"></i>
+                Browse File
+              </button>
+            </div>
           </div>
+
+          <!-- Dropzone Preview State -->
           <div id="dropzone-preview-container" class="hidden w-full relative">
             <img id="image-thumbnail" class="max-h-48 rounded-lg mx-auto object-contain border border-slate-200 shadow-sm" />
-            <button id="btn-remove-image" class="absolute top-1 right-1 bg-slate-900/70 hover:bg-slate-900 text-white rounded-full p-1 transition shadow">
+            <div id="image-meta" class="text-[11px] text-slate-400 mt-1.5"></div>
+            <button id="btn-remove-image" type="button" class="absolute top-1 right-1 bg-slate-900/70 hover:bg-slate-900 text-white rounded-full p-1.5 transition shadow">
               <i data-lucide="x" class="w-4 h-4"></i>
             </button>
           </div>
@@ -82,13 +101,13 @@
         <div class="mt-4 pt-4 border-t border-slate-100">
           <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Quick Test Samples</p>
           <div class="grid grid-cols-3 gap-2">
-            <button type="button" onclick="loadSample('basil')" class="text-xs font-medium py-1.5 px-2.5 rounded-lg border border-slate-200 hover:bg-slate-100 hover:text-emerald-700 transition text-slate-600 flex items-center justify-center gap-1.5">
+            <button type="button" onclick="loadSample('basil')" class="text-xs font-medium py-2 px-2 rounded-lg border border-slate-200 hover:bg-slate-100 hover:text-emerald-700 transition text-slate-600 flex items-center justify-center gap-1">
               🌿 Basil
             </button>
-            <button type="button" onclick="loadSample('aloevera')" class="text-xs font-medium py-1.5 px-2.5 rounded-lg border border-slate-200 hover:bg-slate-100 hover:text-emerald-700 transition text-slate-600 flex items-center justify-center gap-1.5">
-              🌵 Aloe Vera
+            <button type="button" onclick="loadSample('aloevera')" class="text-xs font-medium py-2 px-2 rounded-lg border border-slate-200 hover:bg-slate-100 hover:text-emerald-700 transition text-slate-600 flex items-center justify-center gap-1">
+              🌵 Aloe
             </button>
-            <button type="button" onclick="loadSample('mint')" class="text-xs font-medium py-1.5 px-2.5 rounded-lg border border-slate-200 hover:bg-slate-100 hover:text-emerald-700 transition text-slate-600 flex items-center justify-center gap-1.5">
+            <button type="button" onclick="loadSample('mint')" class="text-xs font-medium py-2 px-2 rounded-lg border border-slate-200 hover:bg-slate-100 hover:text-emerald-700 transition text-slate-600 flex items-center justify-center gap-1">
               🍃 Mint
             </button>
           </div>
@@ -96,7 +115,7 @@
       </div>
 
       <!-- Inference Settings Card -->
-      <div class="bg-white rounded-2xl p-6 border border-slate-200/80 custom-shadow">
+      <div class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 custom-shadow">
         <h2 class="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
           <i data-lucide="sliders" class="w-5 h-5 text-emerald-600"></i>
           Inference Parameters
@@ -133,7 +152,7 @@
           </div>
 
           <!-- Run Inference Button -->
-          <button id="btn-predict" disabled class="w-full mt-2 py-3 px-4 rounded-xl font-bold text-sm bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 text-white shadow-md shadow-emerald-600/20 hover:shadow-lg transition flex items-center justify-center gap-2">
+          <button id="btn-predict" disabled class="w-full mt-2 py-3 px-4 rounded-xl font-bold text-sm bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 text-white shadow-md shadow-emerald-600/20 hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed">
             <i data-lucide="play" class="w-4 h-4"></i>
             Run Disease Diagnosis
           </button>
@@ -145,8 +164,20 @@
     <!-- Right Column: Visualization & Diagnostic Results -->
     <div class="lg:col-span-7 space-y-6">
 
+      <!-- Alert / Notification Message (if needed) -->
+      <div id="ui-alert" class="hidden p-4 rounded-xl border flex items-start gap-3 transition">
+        <i id="ui-alert-icon" data-lucide="alert-circle" class="w-5 h-5 shrink-0 mt-0.5"></i>
+        <div class="flex-1">
+          <div id="ui-alert-title" class="text-xs font-bold uppercase tracking-wider"></div>
+          <p id="ui-alert-message" class="text-xs mt-0.5"></p>
+        </div>
+        <button type="button" onclick="hideAlert()" class="text-slate-400 hover:text-slate-600 p-1">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
       <!-- Visualization Panel -->
-      <div class="bg-white rounded-2xl p-6 border border-slate-200/80 custom-shadow">
+      <div class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 custom-shadow">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
             <i data-lucide="scan" class="w-5 h-5 text-emerald-600"></i>
@@ -158,28 +189,28 @@
         </div>
 
         <!-- Canvas Container -->
-        <div class="relative bg-slate-900 rounded-xl overflow-hidden min-h-[380px] flex items-center justify-center border border-slate-800">
-          <div id="canvas-placeholder" class="text-center text-slate-400 p-8 flex flex-col items-center">
+        <div class="relative bg-slate-900 rounded-xl overflow-hidden min-h-[320px] sm:min-h-[380px] flex items-center justify-center border border-slate-800">
+          <div id="canvas-placeholder" class="text-center text-slate-400 p-6 flex flex-col items-center">
             <i data-lucide="eye" class="w-12 h-12 text-slate-600 mb-3"></i>
             <p class="text-sm font-medium">No image analyzed yet</p>
-            <p class="text-xs text-slate-500 mt-1">Upload a leaf image and click 'Run Disease Diagnosis' to view detections</p>
+            <p class="text-xs text-slate-500 mt-1 max-w-sm text-center">Take a photo or upload a leaf image and click 'Run Disease Diagnosis' to view detections</p>
           </div>
 
-          <div id="canvas-wrapper" class="hidden relative max-w-full max-h-[480px]">
-            <canvas id="result-canvas" class="max-w-full max-h-[480px] rounded-lg shadow-inner object-contain"></canvas>
+          <div id="canvas-wrapper" class="hidden relative w-full flex items-center justify-center p-2">
+            <canvas id="result-canvas" class="max-w-full max-h-[480px] h-auto rounded-lg shadow-inner object-contain"></canvas>
           </div>
 
           <!-- Loading Spinner Overlay -->
-          <div id="loading-overlay" class="hidden absolute inset-0 bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center text-white">
+          <div id="loading-overlay" class="hidden absolute inset-0 bg-slate-900/85 backdrop-blur-sm flex flex-col items-center justify-center text-white p-4">
             <div class="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-3"></div>
-            <p class="text-sm font-semibold tracking-wide">Executing YOLO26 Inference Pipeline...</p>
-            <p class="text-xs text-slate-400 mt-1">Running preprocessing, neural forward pass, and post-filtering</p>
+            <p class="text-sm font-semibold tracking-wide text-center">Executing YOLO26 Inference Pipeline...</p>
+            <p class="text-xs text-slate-400 mt-1 text-center">Preprocessing, neural forward pass, and botanical gating</p>
           </div>
         </div>
       </div>
 
       <!-- Diagnostic Results Card -->
-      <div id="results-card" class="hidden bg-white rounded-2xl p-6 border border-slate-200/80 custom-shadow space-y-6">
+      <div id="results-card" class="hidden bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 custom-shadow space-y-6">
 
         <!-- Summary Header -->
         <div class="flex flex-wrap items-start justify-between gap-4 pb-5 border-b border-slate-100">
@@ -187,7 +218,7 @@
             <span id="res-category-badge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-rose-100 text-rose-800 uppercase tracking-wider">
               Disease Detected
             </span>
-            <h3 id="res-primary-condition" class="text-2xl font-extrabold text-slate-900 mt-2 capitalize">
+            <h3 id="res-primary-condition" class="text-xl sm:text-2xl font-extrabold text-slate-900 mt-2 capitalize">
               Basil Bacterial Spot
             </h3>
             <p id="res-species-label" class="text-xs font-medium text-slate-500 mt-0.5">
@@ -196,8 +227,8 @@
           </div>
 
           <div class="text-right">
-            <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Model Confidence</div>
-            <div id="res-confidence-pct" class="text-3xl font-black text-emerald-600 mt-0.5">94.2%</div>
+            <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Confidence</div>
+            <div id="res-confidence-pct" class="text-2xl sm:text-3xl font-black text-emerald-600 mt-0.5">94.2%</div>
           </div>
         </div>
 
@@ -205,7 +236,7 @@
         <div id="res-warning" class="hidden p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 flex items-start gap-3">
           <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 shrink-0 mt-0.5"></i>
           <div>
-            <div class="text-xs font-bold uppercase tracking-wider">Uncertainty Warning</div>
+            <div class="text-xs font-bold uppercase tracking-wider">Diagnostic Notice</div>
             <p id="res-warning-text" class="text-xs mt-0.5"></p>
           </div>
         </div>
@@ -226,20 +257,20 @@
             Latency Profile (Hardware Benchmarks)
           </h4>
           <div class="grid grid-cols-4 gap-2 text-center">
-            <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-100">
-              <div class="text-[10px] font-semibold text-slate-400 uppercase">Preproc</div>
+            <div class="p-2 sm:p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+              <div class="text-[9px] sm:text-[10px] font-semibold text-slate-400 uppercase">Preproc</div>
               <div id="lat-pre" class="text-xs font-mono font-bold text-slate-700 mt-0.5">1.2ms</div>
             </div>
-            <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-100">
-              <div class="text-[10px] font-semibold text-slate-400 uppercase">Inference</div>
+            <div class="p-2 sm:p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+              <div class="text-[9px] sm:text-[10px] font-semibold text-slate-400 uppercase">Inference</div>
               <div id="lat-inf" class="text-xs font-mono font-bold text-emerald-600 mt-0.5">8.4ms</div>
             </div>
-            <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-100">
-              <div class="text-[10px] font-semibold text-slate-400 uppercase">Postproc</div>
+            <div class="p-2 sm:p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+              <div class="text-[9px] sm:text-[10px] font-semibold text-slate-400 uppercase">Postproc</div>
               <div id="lat-post" class="text-xs font-mono font-bold text-slate-700 mt-0.5">0.6ms</div>
             </div>
-            <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-100">
-              <div class="text-[10px] font-semibold text-slate-400 uppercase">Total</div>
+            <div class="p-2 sm:p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+              <div class="text-[9px] sm:text-[10px] font-semibold text-slate-400 uppercase">Total</div>
               <div id="lat-tot" class="text-xs font-mono font-black text-slate-900 mt-0.5">10.2ms</div>
             </div>
           </div>
@@ -257,7 +288,7 @@
   </main>
 
   <footer class="glass-panel border-t border-slate-200/80 px-6 py-4 mt-auto text-center text-xs text-slate-400">
-    KrishiAI v1.0.0 — Powered by Ultralytics YOLO26 Nano Dual-Pipeline Architecture. Fully harmonized & leakage-free.
+    KrishiAI v1.0.0 — Powered by Ultralytics YOLO26 Nano Dual-Pipeline Architecture. Optimized for Desktop & Mobile.
   </footer>
 
   <script>
@@ -289,9 +320,13 @@
     // DOM Elements
     const dropzone = document.getElementById("dropzone");
     const fileInput = document.getElementById("file-input");
+    const cameraInput = document.getElementById("camera-input");
+    const btnCamera = document.getElementById("btn-camera");
+    const btnGallery = document.getElementById("btn-gallery");
     const dropzoneEmpty = document.getElementById("dropzone-empty");
     const dropzonePreview = document.getElementById("dropzone-preview-container");
     const imageThumbnail = document.getElementById("image-thumbnail");
+    const imageMeta = document.getElementById("image-meta");
     const btnRemove = document.getElementById("btn-remove-image");
     const btnPredict = document.getElementById("btn-predict");
     const speciesSelect = document.getElementById("species-select");
@@ -302,6 +337,12 @@
     const statusDot = document.getElementById("status-dot");
     const statusText = document.getElementById("status-text");
 
+    // UI Alert
+    const uiAlert = document.getElementById("ui-alert");
+    const uiAlertTitle = document.getElementById("ui-alert-title");
+    const uiAlertMessage = document.getElementById("ui-alert-message");
+    const uiAlertIcon = document.getElementById("ui-alert-icon");
+
     // Results elements
     const canvasPlaceholder = document.getElementById("canvas-placeholder");
     const canvasWrapper = document.getElementById("canvas-wrapper");
@@ -309,6 +350,27 @@
     const loadingOverlay = document.getElementById("loading-overlay");
     const resultsCard = document.getElementById("results-card");
     const badgeTaskType = document.getElementById("badge-task-type");
+
+    function showAlert(title, message, type = "error") {
+      uiAlert.classList.remove("hidden");
+      uiAlertTitle.textContent = title;
+      uiAlertMessage.textContent = message;
+      if (type === "error") {
+        uiAlert.className = "p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 flex items-start gap-3 transition";
+        uiAlertIcon.className = "w-5 h-5 text-rose-600 shrink-0 mt-0.5";
+      } else if (type === "warning") {
+        uiAlert.className = "p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 flex items-start gap-3 transition";
+        uiAlertIcon.className = "w-5 h-5 text-amber-600 shrink-0 mt-0.5";
+      } else {
+        uiAlert.className = "p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-start gap-3 transition";
+        uiAlertIcon.className = "w-5 h-5 text-emerald-600 shrink-0 mt-0.5";
+      }
+      lucide.createIcons();
+    }
+
+    function hideAlert() {
+      uiAlert.classList.add("hidden");
+    }
 
     // Slider Listeners
     confSlider.addEventListener("input", (e) => confVal.textContent = parseFloat(e.target.value).toFixed(2));
@@ -332,10 +394,85 @@
     }
     checkHealth();
 
-    // Drag and drop handlers
-    dropzone.addEventListener("click", () => fileInput.click());
+    // Client-side image compression & optimization (Resizes massive mobile photos to prevent OOM & network latency)
+    async function optimizeImageForInference(file) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const MAX_DIMENSION = 1280;
+            let width = img.naturalWidth || img.width;
+            let height = img.naturalHeight || img.height;
+
+            if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+              if (width > height) {
+                height = Math.round((height * MAX_DIMENSION) / width);
+                width = MAX_DIMENSION;
+              } else {
+                width = Math.round((width * MAX_DIMENSION) / height);
+                height = MAX_DIMENSION;
+              }
+            }
+
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, width, height);
+
+            canvas.toBlob(
+              (blob) => {
+                if (!blob) {
+                  resolve({ file, img, dataUrl: e.target.result });
+                  return;
+                }
+                const optimizedFile = new File([blob], "leaf_input.jpg", {
+                  type: "image/jpeg",
+                  lastModified: Date.now(),
+                });
+                const optimizedImg = new Image();
+                const optimizedUrl = URL.createObjectURL(blob);
+                optimizedImg.onload = () => {
+                  resolve({ file: optimizedFile, img: optimizedImg, dataUrl: optimizedUrl, width, height, sizeKb: Math.round(blob.size / 1024) });
+                };
+                optimizedImg.src = optimizedUrl;
+              },
+              "image/jpeg",
+              0.88
+            );
+          };
+          img.onerror = () => resolve({ file, img: null, dataUrl: e.target.result });
+          img.src = e.target.result;
+        };
+        reader.onerror = () => resolve({ file, img: null, dataUrl: null });
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // Input handlers
+    btnCamera.addEventListener("click", (e) => {
+      e.stopPropagation();
+      cameraInput.click();
+    });
+
+    btnGallery.addEventListener("click", (e) => {
+      e.stopPropagation();
+      fileInput.click();
+    });
+
+    dropzone.addEventListener("click", (e) => {
+      if (e.target !== btnCamera && e.target !== btnGallery && !btnCamera.contains(e.target) && !btnGallery.contains(e.target)) {
+        fileInput.click();
+      }
+    });
+
     fileInput.addEventListener("change", (e) => {
-      if (e.target.files.length > 0) handleFile(e.target.files[0]);
+      if (e.target.files.length > 0) handleRawFile(e.target.files[0]);
+    });
+
+    cameraInput.addEventListener("change", (e) => {
+      if (e.target.files.length > 0) handleRawFile(e.target.files[0]);
     });
 
     dropzone.addEventListener("dragover", (e) => {
@@ -348,7 +485,7 @@
     dropzone.addEventListener("drop", (e) => {
       e.preventDefault();
       dropzone.classList.remove("border-emerald-500", "bg-emerald-50/30");
-      if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+      if (e.dataTransfer.files.length > 0) handleRawFile(e.dataTransfer.files[0]);
     });
 
     btnRemove.addEventListener("click", (e) => {
@@ -356,31 +493,38 @@
       resetUpload();
     });
 
-    function handleFile(file) {
-      if (!file.type.startsWith("image/")) {
-        alert("Please select a valid image file (JPEG, PNG, WebP).");
+    async function handleRawFile(file) {
+      hideAlert();
+
+      // Allow general image MIME types or mobile uploads
+      if (file.type && !file.type.startsWith("image/") && !file.name.match(/\.(jpg|jpeg|png|webp|heic|heif)$/i)) {
+        showAlert("Invalid File Type", "Please select a valid image file (JPEG, PNG, WebP).");
         return;
       }
-      selectedFile = file;
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        imageThumbnail.src = event.target.result;
-        dropzoneEmpty.classList.add("hidden");
-        dropzonePreview.classList.remove("hidden");
-        btnPredict.disabled = false;
 
-        // Preload Image for Canvas drawing
-        const img = new Image();
-        img.onload = () => { loadedImage = img; };
-        img.src = event.target.result;
-      };
-      reader.readAsDataURL(file);
+      // Optimize image on client side for fast and memory-safe mobile & cloud inference
+      const result = await optimizeImageForInference(file);
+      selectedFile = result.file;
+      loadedImage = result.img;
+
+      imageThumbnail.src = result.dataUrl;
+      if (result.width && result.sizeKb) {
+        imageMeta.textContent = `Optimized: ${result.width}×${result.height}px • ${result.sizeKb} KB`;
+      } else {
+        imageMeta.textContent = "";
+      }
+
+      dropzoneEmpty.classList.add("hidden");
+      dropzonePreview.classList.remove("hidden");
+      btnPredict.disabled = false;
+      lucide.createIcons();
     }
 
     function resetUpload() {
       selectedFile = null;
       loadedImage = null;
       fileInput.value = "";
+      cameraInput.value = "";
       dropzoneEmpty.classList.remove("hidden");
       dropzonePreview.classList.add("hidden");
       btnPredict.disabled = true;
@@ -388,14 +532,16 @@
       canvasWrapper.classList.add("hidden");
       resultsCard.classList.add("hidden");
       badgeTaskType.textContent = "Ready";
+      hideAlert();
     }
 
-    // Load real high-quality test leaf sample
+    // Load real test leaf sample
     async function loadSample(type) {
+      hideAlert();
       const sampleMap = {
-        'basil': { url: '/static/samples/basil_sample.jpg', filename: 'basil_powdery_mildew_sample.jpg', species: 'basil' },
-        'aloevera': { url: '/static/samples/aloe_vera_sample.jpg', filename: 'aloe_vera_rust_sample.jpg', species: 'aloe_vera' },
-        'mint': { url: '/static/samples/mint_sample.jpg', filename: 'mint_dried_sample.jpg', species: 'mint' },
+        'basil': { url: '/static/samples/basil_sample.jpg', filename: 'basil_sample.jpg', species: 'basil' },
+        'aloevera': { url: '/static/samples/aloe_vera_sample.jpg', filename: 'aloe_vera_sample.jpg', species: 'aloe_vera' },
+        'mint': { url: '/static/samples/mint_sample.jpg', filename: 'mint_sample.jpg', species: 'mint' },
       };
 
       const sample = sampleMap[type];
@@ -408,9 +554,10 @@
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const blob = await response.blob();
         const file = new File([blob], sample.filename, { type: "image/jpeg" });
-        handleFile(file);
+        await handleRawFile(file);
       } catch (err) {
         console.error("Could not load sample image:", err);
+        showAlert("Sample Load Error", "Could not load sample image from server.");
       }
     }
 
@@ -418,6 +565,7 @@
     btnPredict.addEventListener("click", async () => {
       if (!selectedFile) return;
 
+      hideAlert();
       loadingOverlay.classList.remove("hidden");
       btnPredict.disabled = true;
 
@@ -428,20 +576,45 @@
       formData.append("iou_threshold", iouSlider.value);
 
       try {
-        const response = await fetch("/predict", {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!response.ok) {
-          const err = await response.json();
-          throw new Error(err.detail || "Prediction failed");
+        let response;
+        try {
+          response = await fetch("/predict", {
+            method: "POST",
+            body: formData,
+          });
+        } catch (netErr) {
+          throw new Error("Network connection failed. Please check your internet connection.");
         }
 
-        const data = await response.json();
+        if (!response.ok) {
+          let errorMsg = `Inference failed (HTTP ${response.status})`;
+          try {
+            const errJson = await response.json();
+            if (errJson && errJson.detail) errorMsg = errJson.detail;
+          } catch (jsonErr) {
+            try {
+              const errText = await response.text();
+              if (errText && errText.trim().length > 0 && errText.length < 300) {
+                errorMsg = errText.trim();
+              } else if (response.status === 502 || response.status === 503 || response.status === 504) {
+                errorMsg = "Server is starting up or temporarily busy. Please tap 'Run Disease Diagnosis' again.";
+              }
+            } catch (textErr) {}
+          }
+          throw new Error(errorMsg);
+        }
+
+        let data;
+        try {
+          data = await response.json();
+        } catch (parseErr) {
+          throw new Error("Received an unexpected response from the server. Please try again.");
+        }
+
         renderResults(data);
       } catch (err) {
-        alert("Error during inference: " + err.message);
+        console.error("Diagnosis error:", err);
+        showAlert("Diagnosis Error", err.message);
       } finally {
         loadingOverlay.classList.add("hidden");
         btnPredict.disabled = false;
@@ -460,7 +633,7 @@
         badgeTaskType.textContent = "NON-PLANT / UNRECOGNIZED";
         badgeTaskType.className = "text-xs font-semibold px-2.5 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-200";
       } else {
-        badgeTaskType.textContent = `${data.task_type.toUpperCase()} • ${data.plant_species.toUpperCase()}`;
+        badgeTaskType.textContent = `${(data.task_type || "DETECTION").toUpperCase()} • ${(data.plant_species || "PLANT").toUpperCase()}`;
         badgeTaskType.className = "text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200";
       }
 
@@ -469,8 +642,8 @@
       const ctx = canvas.getContext("2d");
 
       if (loadedImage) {
-        canvas.width = loadedImage.naturalWidth || 640;
-        canvas.height = loadedImage.naturalHeight || 640;
+        canvas.width = loadedImage.naturalWidth || loadedImage.width || 640;
+        canvas.height = loadedImage.naturalHeight || loadedImage.height || 640;
         ctx.drawImage(loadedImage, 0, 0, canvas.width, canvas.height);
 
         // Draw boxes if detection and NOT unrecognized
@@ -491,15 +664,17 @@
 
             // Label background
             const label = `${det.class_name.replace(/_/g, ' ')} ${(det.confidence * 100).toFixed(0)}%`;
-            ctx.font = `bold ${Math.max(12, Math.round(canvas.width / 35))}px 'Plus Jakarta Sans', sans-serif`;
+            const fontSize = Math.max(12, Math.round(canvas.width / 35));
+            ctx.font = `bold ${fontSize}px 'Plus Jakarta Sans', sans-serif`;
             const textMetrics = ctx.measureText(label);
             const pad = 6;
+            const bannerHeight = fontSize + 12;
 
             ctx.fillStyle = ctx.strokeStyle;
-            ctx.fillRect(x, Math.max(0, y - 28), textMetrics.width + pad * 2, 28);
+            ctx.fillRect(x, Math.max(0, y - bannerHeight), textMetrics.width + pad * 2, bannerHeight);
 
             ctx.fillStyle = "#ffffff";
-            ctx.fillText(label, x + pad, Math.max(20, y - 8));
+            ctx.fillText(label, x + pad, Math.max(fontSize + 2, y - 6));
           });
         }
       }
@@ -521,8 +696,8 @@
         const cleanCondition = (data.primary_condition || "Unknown").replace(/_/g, " ");
         condElem.textContent = cleanCondition;
         condElem.className = "text-xl font-bold text-slate-900 capitalize";
-        document.getElementById("res-species-label").innerHTML = `Crop: <span class="font-bold text-slate-700 capitalize">${data.plant_species.replace(/_/g, " ")}</span>`;
-        document.getElementById("res-confidence-pct").textContent = `${(data.confidence * 100).toFixed(1)}%`;
+        document.getElementById("res-species-label").innerHTML = `Crop: <span class="font-bold text-slate-700 capitalize">${(data.plant_species || "").replace(/_/g, " ")}</span>`;
+        document.getElementById("res-confidence-pct").textContent = `${((data.confidence || 0) * 100).toFixed(1)}%`;
 
         // Category Badge
         if (cleanCondition.includes("healthy") || cleanCondition.includes("fresh")) {
@@ -550,34 +725,46 @@
         warnBox.classList.add("hidden");
       }
 
-      // Latencies
-      document.getElementById("lat-pre").textContent = `${data.latency_ms.preprocessing.toFixed(1)}ms`;
-      document.getElementById("lat-inf").textContent = `${data.latency_ms.inference.toFixed(1)}ms`;
-      document.getElementById("lat-post").textContent = `${data.latency_ms.postprocessing.toFixed(1)}ms`;
-      document.getElementById("lat-tot").textContent = `${data.latency_ms.total.toFixed(1)}ms`;
+      // Latency Profile
+      const lat = data.latency_ms || { preprocessing: 0, inference: 0, postprocessing: 0, total: 0 };
+      document.getElementById("lat-pre").textContent = `${lat.preprocessing.toFixed(1)}ms`;
+      document.getElementById("lat-inf").textContent = `${lat.inference.toFixed(1)}ms`;
+      document.getElementById("lat-post").textContent = `${lat.postprocessing.toFixed(1)}ms`;
+      document.getElementById("lat-tot").textContent = `${lat.total.toFixed(1)}ms`;
 
       // Detections List
-      const detContainer = document.getElementById("detections-container");
       const detList = document.getElementById("detections-list");
+      const detCount = document.getElementById("det-count");
       detList.innerHTML = "";
-      if (!isUnrecognized && data.detections && data.detections.length > 0) {
-        detContainer.classList.remove("hidden");
-        document.getElementById("det-count").textContent = data.detections.length;
-        data.detections.forEach((d) => {
-          const row = document.createElement("div");
-          row.className = "flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-100 text-xs";
-          row.innerHTML = `
-            <span class="font-semibold text-slate-800 capitalize">${d.class_name.replace(/_/g, " ")}</span>
-            <div class="flex items-center gap-2">
-              <span class="text-slate-500 font-mono">${(d.confidence * 100).toFixed(1)}%</span>
-              <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-slate-200 text-slate-700">${d.category}</span>
-            </div>
-          `;
-          detList.appendChild(row);
-        });
+
+      const dets = data.detections || [];
+      detCount.textContent = dets.length;
+
+      if (dets.length === 0) {
+        detList.innerHTML = `<div class="text-xs text-slate-400 py-2 italic text-center">No localized bounding box lesions detected</div>`;
       } else {
-        detContainer.classList.add("hidden");
+        dets.forEach((d, idx) => {
+          const item = document.createElement("div");
+          item.className = "flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-100 text-xs";
+          const badgeBg = d.category === "disease" ? "bg-rose-100 text-rose-800" : (d.category === "deficiency" ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800");
+          item.innerHTML = `
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-slate-400">#${idx + 1}</span>
+              <span class="font-semibold text-slate-800 capitalize">${d.class_name.replace(/_/g, " ")}</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${badgeBg}">${d.category}</span>
+            </div>
+            <div class="font-mono font-bold text-emerald-600">${(d.confidence * 100).toFixed(1)}%</div>
+          `;
+          detList.appendChild(item);
+        });
       }
+
+      // Smooth scroll to results on mobile viewports
+      if (window.innerWidth < 1024) {
+        resultsCard.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+
+      lucide.createIcons();
     }
   </script>
 </body>

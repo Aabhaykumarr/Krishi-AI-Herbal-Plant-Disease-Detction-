@@ -8,7 +8,8 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONPATH=src \
     MODEL_DEVICE=cpu \
     OMP_NUM_THREADS=1 \
-    MKL_NUM_THREADS=1
+    MKL_NUM_THREADS=1 \
+    YOLO_CONFIG_DIR=/tmp/Ultralytics
 
 # Install runtime OS dependencies for OpenCV / PIL
 RUN apt-get update && apt-get install -y --no-install-recommends \
