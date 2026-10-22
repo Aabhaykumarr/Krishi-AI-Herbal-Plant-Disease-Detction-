@@ -45,6 +45,7 @@ class LatencyInfo:
     inference: float
     postprocessing: float
     total: float
+    gemini: float = 0.0
 
     def to_dict(self) -> Dict[str, float]:
         return {
@@ -52,6 +53,7 @@ class LatencyInfo:
             "inference": round(self.inference, 2),
             "postprocessing": round(self.postprocessing, 2),
             "total": round(self.total, 2),
+            "gemini": round(self.gemini, 2),
         }
 
 
@@ -68,9 +70,16 @@ class PredictionResponse:
     uncertainty_warning: Optional[str] = None
     detections: List[DetectionItem] = field(default_factory=list)
     latency_ms: Optional[LatencyInfo] = None
+    verification: Optional[Dict[str, Any]] = None
+    original_detections: Optional[List[Dict[str, Any]]] = None
+    diagnosis_source: Optional[str] = None
+    confidence_source: Optional[str] = None
+    condition_category: Optional[str] = None
+    yolo_result: Optional[Dict[str, Any]] = None
+    recommendation: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        result = {
             "request_id": self.request_id,
             "timestamp": self.timestamp,
             "model_version": self.model_version,
@@ -82,3 +91,18 @@ class PredictionResponse:
             "detections": [d.to_dict() for d in self.detections],
             "latency_ms": self.latency_ms.to_dict() if self.latency_ms else None,
         }
+        if self.verification is not None:
+            result["verification"] = self.verification
+        if self.original_detections is not None:
+            result["original_detections"] = self.original_detections
+        if self.diagnosis_source is not None:
+            result["diagnosis_source"] = self.diagnosis_source
+        if self.confidence_source is not None:
+            result["confidence_source"] = self.confidence_source
+        if self.condition_category is not None:
+            result["condition_category"] = self.condition_category
+        if self.yolo_result is not None:
+            result["yolo_result"] = self.yolo_result
+        if self.recommendation is not None:
+            result["recommendation"] = self.recommendation
+        return result

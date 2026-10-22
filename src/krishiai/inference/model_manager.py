@@ -426,6 +426,16 @@ class ModelManager:
         finally:
             gc.collect()
 
+    def get_class_names(self, task_type: str) -> Dict[int, str]:
+        """Return the runtime names loaded with the model used for this result."""
+        model = self.cls_model if task_type == "classification" else self.det_model
+        names = getattr(model, "names", None) if model is not None else None
+        if isinstance(names, dict):
+            return {int(class_id): str(name) for class_id, name in names.items()}
+        if isinstance(names, (list, tuple)):
+            return {class_id: str(name) for class_id, name in enumerate(names)}
+        return {}
+
     def _predict_detection(
         self,
         img: Image.Image,

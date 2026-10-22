@@ -148,6 +148,21 @@ pip install -e ".[dev]"
 
 ## 🖥 Running the Live Service
 
+### Optional Gemini Vision Review
+
+Gemini first assesses the full uploaded image and may classify only Basil, Aloe Vera, Mint, or an out-of-scope/non-plant result. YOLO26 then runs independently as a cross-check. When Gemini succeeds, its diagnosis is primary and the original YOLO26 result remains available in the response and in the dashboard's optional cross-check details. If Gemini is disabled, unconfigured, times out, or returns invalid output, the app falls back to the normal YOLO26 result.
+
+Install the service dependencies if they are not installed already:
+```bash
+pip install -r requirements.txt
+```
+
+For local use, copy `.env.example` to `.env` and set `GEMINI_API_KEY` to a key from Google AI Studio. `.env` is ignored by Git. The default model is `gemini-3.5-flash-lite`; you can set `GEMINI_MODEL` to another supported vision model. `GEMINI_VISION_ENABLED`, `GEMINI_TIMEOUT_SECONDS`, `GEMINI_MAX_DETECTIONS`, `GEMINI_CORRECTION_THRESHOLD`, and `GEMINI_MAX_RETRIES` control the optional review.
+
+For Render, add `GEMINI_API_KEY` in the service's **Environment** settings. You can set the other `GEMINI_*` variables there as needed. The key does not belong in `render.yaml` or source control. No Render start command changes are required.
+
+Gemini returns a visual-review score, not a calibrated probability. Its score and explanation are shown separately from YOLO26's model confidence. The service limits uploaded images to `MAX_UPLOAD_SIZE_MB`; provider errors, timeouts, invalid output, and missing credentials leave YOLO26's result unchanged.
+
 ### Start the FastAPI Server & Web Dashboard
 ```bash
 python scripts/run_server.py --port 8000 --reload
@@ -213,6 +228,59 @@ python scripts/run_server.py --port 8000 --reload
     "total": 13.50
   }
 }
+```
+
+### 2. **POST `/save-to-dataset`** — Save Image to Training Dataset
+
+Explicitly save a leaf image to the incoming dataset directory for future model training. This is an **opt-in only** feature; images submitted for prediction are NOT automatically saved.
+
+**Parameters**:
+  - `file`: *(Required)* Leaf image file (JPEG, PNG, or WebP, max 10MB)
+  - `plant_species`: *(Required)* Species label — must be `basil`, `aloe_vera`, or `mint`
+
+**Features**:
+  - Validates file type, size, and species
+  - Prevents path traversal attacks and duplicate uploads (content hash)
+  - Saves to `{INCOMING_DATA_ROOT}/{species}/{YYYY-MM-DD}/` with unique timestamped filename
+  - Generates metadata JSON sidecar with image info and content hash
+
+**Sample Request**:
+```bash
+curl -X POST http://localhost:8000/save-to-dataset \
+  -F "file=@basil_leaf.jpg" \
+  -F "plant_species=basil"
+```
+
+**Sample Response**:
+```json
+{
+  "success": true,
+  "message": "Image successfully saved to basil dataset",
+  "saved_path": "basil/2026-10-21/basil_1729514400123_a3f7c2e1.jpg",
+  "species": "basil",
+  "timestamp": "2026-10-21T16:20:00.123456+00:00",
+  "image_info": {
+    "width": 640,
+    "height": 480,
+    "format": "JPEG",
+    "mode": "RGB",
+    "size_bytes": 125834
+  }
+}
+```
+
+**Important Notes for Deployment**:
+- **Render Free Tier**: Uses ephemeral storage. Saved images are **lost on app restart** or redeploy.
+- **Production**: Configure `INCOMING_DATA_ROOT` to point to persistent storage:
+  - AWS S3 bucket
+  - Cloudinary storage
+  - Render Persistent Disks (requires paid plan)
+  - External database with blob storage
+
+**Environment Variables**:
+```bash
+INCOMING_DATA_ROOT=./data/incoming  # Local path (ephemeral on Render)
+MAX_UPLOAD_SIZE_MB=10               # Maximum file size in MB
 ```
 
 ---

@@ -29,6 +29,10 @@ data/processed/*
 data/final/*
 !data/final/.gitkeep
 
+# User-contributed images are local incoming data, not source files.
+data/incoming/*
+!data/incoming/.gitkeep
+
 # Track Manifests & Build Reports
 !data/manifests/*.json
 data/manifests/*_scratch*.json

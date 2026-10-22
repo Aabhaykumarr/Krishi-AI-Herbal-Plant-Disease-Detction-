@@ -58,11 +58,27 @@
           <i data-lucide="upload-cloud" class="w-5 h-5 text-emerald-600"></i>
           Leaf Image Ingestion
         </h2>
-        <p class="text-xs text-slate-500 mb-4">Capture or upload a photo of a Basil, Aloe Vera, or Mint leaf.</p>
+        <p class="text-xs text-slate-500 mb-4">Identify Basil, Aloe Vera, and Mint leaves. Other plants are reported as non-herbal; YOLO26 provides an independent cross-check.</p>
 
-        <!-- Hidden file inputs (Gallery & Camera) -->
+        <!-- File picker; camera capture uses the browser camera preview below. -->
         <input type="file" id="file-input" class="hidden" accept="image/*" />
-        <input type="file" id="camera-input" class="hidden" accept="image/*" capture="environment" />
+
+        <dialog id="camera-dialog" class="w-[min(92vw,640px)] p-0 rounded-2xl bg-white shadow-2xl backdrop:bg-slate-950/70">
+          <div class="p-4 sm:p-5">
+            <div class="flex items-center justify-between gap-3 mb-3">
+              <h3 class="font-bold text-slate-900">Take a leaf photo</h3>
+              <button type="button" id="btn-camera-close" class="rounded-lg p-2 text-slate-500 hover:bg-slate-100" aria-label="Close camera">
+                <i data-lucide="x" class="w-5 h-5"></i>
+              </button>
+            </div>
+            <video id="camera-preview" class="w-full max-h-[65vh] bg-slate-950 rounded-xl object-contain" autoplay muted playsinline></video>
+            <p class="text-xs text-slate-500 mt-2">Allow camera access when your browser asks. The photo stays in this page until you run diagnosis.</p>
+            <div class="flex justify-end gap-2 mt-4">
+              <button type="button" id="btn-camera-cancel" class="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold">Cancel</button>
+              <button type="button" id="btn-camera-capture" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold">Capture photo</button>
+            </div>
+          </div>
+        </dialog>
 
         <!-- Dropzone -->
         <div id="dropzone" class="border-2 border-dashed border-slate-300 hover:border-emerald-500 bg-slate-50/50 hover:bg-emerald-50/20 rounded-xl p-5 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[170px]">
@@ -124,7 +140,7 @@
         <div class="space-y-4">
           <!-- Species Selector -->
           <div>
-            <label class="block text-xs font-semibold text-slate-700 mb-1.5">Target Crop Species</label>
+            <label class="block text-xs font-semibold text-slate-700 mb-1.5">Optional Crop Hint (YOLO26 Supports Three Crops)</label>
             <select id="species-select" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none transition">
               <option value="">⚡ Auto-Detect (Dual Pipeline Gateway)</option>
               <option value="basil">🌿 Basil (Ocimum basilicum — Detection)</option>
@@ -136,7 +152,7 @@
           <!-- Confidence Threshold -->
           <div>
             <div class="flex justify-between items-center mb-1">
-              <label class="text-xs font-semibold text-slate-700">Confidence Threshold</label>
+              <label class="text-xs font-semibold text-slate-700">YOLO26 Confidence Threshold</label>
               <span id="conf-val" class="text-xs font-mono font-bold text-emerald-600">0.25</span>
             </div>
             <input type="range" id="conf-slider" min="0.05" max="0.95" step="0.05" value="0.25" class="w-full accent-emerald-600 cursor-pointer" />
@@ -149,6 +165,15 @@
               <span id="iou-val" class="text-xs font-mono font-bold text-emerald-600">0.45</span>
             </div>
             <input type="range" id="iou-slider" min="0.10" max="0.90" step="0.05" value="0.45" class="w-full accent-emerald-600 cursor-pointer" />
+          </div>
+
+          <!-- Save to Dataset Section -->
+          <div class="mt-4 pt-4 border-t border-slate-100">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="save-to-dataset-checkbox" class="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer" />
+              <span class="text-xs font-semibold text-slate-700">💾 Save this image to training dataset</span>
+            </label>
+            <p class="text-[10px] text-slate-400 mt-1 ml-6">Contribute to model improvement (opt-in only)</p>
           </div>
 
           <!-- Run Inference Button -->
@@ -227,7 +252,7 @@
           </div>
 
           <div class="text-right">
-            <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Confidence</div>
+            <div id="res-confidence-label" class="text-xs font-bold text-slate-400 uppercase tracking-wider">YOLO26 confidence</div>
             <div id="res-confidence-pct" class="text-2xl sm:text-3xl font-black text-emerald-600 mt-0.5">94.2%</div>
           </div>
         </div>
@@ -239,6 +264,13 @@
             <div class="text-xs font-bold uppercase tracking-wider">Diagnostic Notice</div>
             <p id="res-warning-text" class="text-xs mt-0.5"></p>
           </div>
+        </div>
+
+        <!-- Optional Gemini review status and auditable label changes -->
+        <div id="res-verification" class="hidden p-4 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-900">
+          <div class="text-xs font-bold uppercase tracking-wider">Gemini First + YOLO26 Cross-Check</div>
+          <p id="res-verification-note" class="text-xs mt-1"></p>
+          <div id="res-verification-changes" class="space-y-1 mt-2"></div>
         </div>
 
         <!-- Treatment & Agronomic Recommendation -->
@@ -254,12 +286,16 @@
         <div>
           <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
             <i data-lucide="zap" class="w-4 h-4 text-amber-500"></i>
-            Latency Profile (Hardware Benchmarks)
+            Pipeline Latency Profile
           </h4>
-          <div class="grid grid-cols-4 gap-2 text-center">
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center">
             <div class="p-2 sm:p-2.5 rounded-lg bg-slate-50 border border-slate-100">
               <div class="text-[9px] sm:text-[10px] font-semibold text-slate-400 uppercase">Preproc</div>
               <div id="lat-pre" class="text-xs font-mono font-bold text-slate-700 mt-0.5">1.2ms</div>
+            </div>
+            <div class="p-2 sm:p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+              <div class="text-[9px] sm:text-[10px] font-semibold text-slate-400 uppercase">Gemini</div>
+              <div id="lat-gemini" class="text-xs font-mono font-bold text-indigo-600 mt-0.5">0ms</div>
             </div>
             <div class="p-2 sm:p-2.5 rounded-lg bg-slate-50 border border-slate-100">
               <div class="text-[9px] sm:text-[10px] font-semibold text-slate-400 uppercase">Inference</div>
@@ -276,11 +312,17 @@
           </div>
         </div>
 
-        <!-- Detections List -->
-        <div id="detections-container">
-          <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Detected Lesions & Regions (<span id="det-count">0</span>)</h4>
-          <div id="detections-list" class="space-y-1.5 max-h-48 overflow-y-auto pr-1"></div>
-        </div>
+        <!-- Optional local-model details; collapsed when Gemini and YOLO disagree. -->
+        <details id="yolo-details" class="hidden rounded-xl border border-slate-200 bg-white">
+          <summary class="group flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600">
+            <span>Optional YOLO26 cross-check</span>
+            <span class="flex shrink-0 items-center gap-2 text-slate-400"><span><span id="det-count">0</span> detections</span><i data-lucide="chevron-down" class="h-4 w-4 transition-transform group-open:rotate-180"></i></span>
+          </summary>
+          <div class="space-y-2 border-t border-slate-100 p-3 sm:p-4">
+            <p id="yolo-result-summary" class="text-xs text-slate-600"></p>
+            <div id="detections-list" class="space-y-1.5 max-h-48 overflow-y-auto pr-1"></div>
+          </div>
+        </details>
 
       </div>
 
@@ -320,9 +362,14 @@
     // DOM Elements
     const dropzone = document.getElementById("dropzone");
     const fileInput = document.getElementById("file-input");
-    const cameraInput = document.getElementById("camera-input");
     const btnCamera = document.getElementById("btn-camera");
     const btnGallery = document.getElementById("btn-gallery");
+    const cameraDialog = document.getElementById("camera-dialog");
+    const cameraPreview = document.getElementById("camera-preview");
+    const btnCameraClose = document.getElementById("btn-camera-close");
+    const btnCameraCancel = document.getElementById("btn-camera-cancel");
+    const btnCameraCapture = document.getElementById("btn-camera-capture");
+    let cameraStream = null;
     const dropzoneEmpty = document.getElementById("dropzone-empty");
     const dropzonePreview = document.getElementById("dropzone-preview-container");
     const imageThumbnail = document.getElementById("image-thumbnail");
@@ -336,6 +383,7 @@
     const iouVal = document.getElementById("iou-val");
     const statusDot = document.getElementById("status-dot");
     const statusText = document.getElementById("status-text");
+    const saveToDatasetCheckbox = document.getElementById("save-to-dataset-checkbox");
 
     // UI Alert
     const uiAlert = document.getElementById("ui-alert");
@@ -454,9 +502,77 @@
     }
 
     // Input handlers
-    btnCamera.addEventListener("click", (e) => {
+    btnCamera.addEventListener("click", async (e) => {
       e.stopPropagation();
-      cameraInput.click();
+      await openCamera();
+    });
+
+    async function openCamera() {
+      hideAlert();
+      if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
+        showAlert("Camera unavailable", "This browser cannot open a camera here. Use localhost or HTTPS and allow camera access.");
+        return;
+      }
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" } },
+          audio: false
+        });
+        cameraPreview.srcObject = cameraStream;
+        cameraDialog.showModal();
+        await cameraPreview.play();
+        btnCameraCapture.disabled = false;
+      } catch (err) {
+        stopCamera();
+        const message = err && err.name === "NotAllowedError"
+          ? "Camera permission was denied. Allow camera access in your browser settings, then try again."
+          : "The camera could not be opened. Check that a camera is connected and not being used by another app.";
+        showAlert("Could not open camera", message);
+      }
+    }
+
+    function stopCamera() {
+      if (cameraStream) cameraStream.getTracks().forEach((track) => track.stop());
+      cameraStream = null;
+      cameraPreview.srcObject = null;
+      btnCameraCapture.disabled = false;
+      if (cameraDialog.open) cameraDialog.close();
+    }
+
+    btnCameraClose.addEventListener("click", stopCamera);
+    btnCameraCancel.addEventListener("click", stopCamera);
+    cameraDialog.addEventListener("cancel", stopCamera);
+    cameraDialog.addEventListener("click", (e) => {
+      if (e.target === cameraDialog) stopCamera();
+    });
+    cameraDialog.addEventListener("close", () => {
+      if (cameraStream) cameraStream.getTracks().forEach((track) => track.stop());
+      cameraStream = null;
+      cameraPreview.srcObject = null;
+    });
+
+    btnCameraCapture.addEventListener("click", () => {
+      const width = cameraPreview.videoWidth;
+      const height = cameraPreview.videoHeight;
+      if (!width || !height) {
+        showAlert("Camera is starting", "Wait for the camera preview to appear, then capture the photo.", "warning");
+        return;
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d").drawImage(cameraPreview, 0, 0, width, height);
+      btnCameraCapture.disabled = true;
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          btnCameraCapture.disabled = false;
+          showAlert("Photo capture failed", "Try again or use Browse File to select an image.");
+          return;
+        }
+        const photo = new File([blob], "camera_leaf.jpg", { type: "image/jpeg", lastModified: Date.now() });
+        stopCamera();
+        handleRawFile(photo);
+      }, "image/jpeg", 0.9);
     });
 
     btnGallery.addEventListener("click", (e) => {
@@ -471,10 +587,6 @@
     });
 
     fileInput.addEventListener("change", (e) => {
-      if (e.target.files.length > 0) handleRawFile(e.target.files[0]);
-    });
-
-    cameraInput.addEventListener("change", (e) => {
       if (e.target.files.length > 0) handleRawFile(e.target.files[0]);
     });
 
@@ -527,7 +639,6 @@
       selectedFile = null;
       loadedImage = null;
       fileInput.value = "";
-      cameraInput.value = "";
       dropzoneEmpty.classList.remove("hidden");
       dropzonePreview.classList.add("hidden");
       btnPredict.disabled = true;
@@ -564,6 +675,41 @@
       }
     }
 
+    // Save to Dataset Handler
+    async function saveToDataset() {
+      if (!selectedFile) return;
+
+      const species = speciesSelect.value;
+      if (!species) {
+        showAlert("Species Required", "Please select a plant species (Basil, Aloe Vera, or Mint) before saving to the dataset.", "warning");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+      formData.append("plant_species", species);
+
+      try {
+        const response = await fetch("/save-to-dataset", {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.detail || `HTTP ${response.status}`);
+        }
+
+        showAlert("Dataset Saved", `Image successfully saved to ${species.replace('_', ' ')} dataset! Location: ${data.saved_path}`, "success");
+        console.log(`Image saved to dataset: ${data.saved_path}`);
+
+      } catch (err) {
+        console.error("Dataset save error:", err);
+        showAlert("Save Failed", err.message || "Could not save image to dataset.", "error");
+      }
+    }
+
     // Prediction Trigger
     btnPredict.addEventListener("click", async () => {
       if (!selectedFile) return;
@@ -571,6 +717,9 @@
       hideAlert();
       loadingOverlay.classList.remove("hidden");
       btnPredict.disabled = true;
+
+      // Check if user wants to save to dataset
+      const shouldSaveToDataset = saveToDatasetCheckbox.checked;
 
       const formData = new FormData();
       formData.append("file", selectedFile);
@@ -615,6 +764,12 @@
         }
 
         renderResults(data);
+
+        // After successful prediction, save to dataset if checkbox was checked
+        if (shouldSaveToDataset) {
+          await saveToDataset();
+        }
+
       } catch (err) {
         console.error("Diagnosis error:", err);
         showAlert("Diagnosis Error", err.message || "An unexpected error occurred during analysis.");
@@ -630,11 +785,24 @@
       canvasWrapper.classList.remove("hidden");
       resultsCard.classList.remove("hidden");
 
-      const isUnrecognized = data.primary_condition === "non_plant_or_unrecognized" || data.task_type === "unrecognized";
+      const assessment = data.verification?.gemini_assessment;
+      const geminiPrimary = data.diagnosis_source === "gemini" && assessment;
+      const verification = data.verification;
+      const disagreementStatuses = new Set([
+        "disagreed_gemini_preferred",
+        "uncertain_gemini_preferred",
+        "non_herbal_plant_detected"
+      ]);
+      const hideYoloCrossCheck = Boolean(geminiPrimary && disagreementStatuses.has(verification?.status));
+      const isNonHerbal = data.primary_condition === "non_herbal_plant_detected" || data.plant_species === "non_herbal_plant";
+      const isUnrecognized = isNonHerbal || data.primary_condition === "non_plant_or_unrecognized" || data.task_type === "unrecognized";
 
       if (isUnrecognized) {
-        badgeTaskType.textContent = "NON-PLANT / UNRECOGNIZED";
-        badgeTaskType.className = "text-xs font-semibold px-2.5 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-200";
+        badgeTaskType.textContent = isNonHerbal ? "NON-HERBAL PLANT" : "NO PLANT LEAF DETECTED";
+        badgeTaskType.className = "text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-200";
+      } else if (geminiPrimary) {
+        badgeTaskType.textContent = `GEMINI VISION • ${(data.plant_species || "PLANT").toUpperCase()}`;
+        badgeTaskType.className = "text-xs font-semibold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200";
       } else {
         badgeTaskType.textContent = `${(data.task_type || "DETECTION").toUpperCase()} • ${(data.plant_species || "PLANT").toUpperCase()}`;
         badgeTaskType.className = "text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200";
@@ -650,7 +818,7 @@
         ctx.drawImage(loadedImage, 0, 0, canvas.width, canvas.height);
 
         // Draw boxes if detection and NOT unrecognized
-        if (!isUnrecognized && data.detections && data.detections.length > 0) {
+        if (!isUnrecognized && !hideYoloCrossCheck && data.detections && data.detections.length > 0) {
           data.detections.forEach((det) => {
             const b = det.bbox;
             const x = (b.x_center - b.width / 2) * canvas.width;
@@ -666,7 +834,7 @@
             ctx.strokeRect(x, y, w, h);
 
             // Label background
-            const label = `${det.class_name.replace(/_/g, ' ')} ${(det.confidence * 100).toFixed(0)}%`;
+            const label = `YOLO26: ${det.class_name.replace(/_/g, ' ')} ${(det.confidence * 100).toFixed(0)}%`;
             const fontSize = Math.max(12, Math.round(canvas.width / 35));
             ctx.font = `bold ${fontSize}px 'Plus Jakarta Sans', sans-serif`;
             const textMetrics = ctx.measureText(label);
@@ -688,34 +856,59 @@
       const recElem = document.getElementById("res-recommendation-text");
 
       if (isUnrecognized) {
-        condElem.textContent = "Non-Plant / Unrecognized Image";
-        condElem.className = "text-xl font-bold text-rose-600";
-        document.getElementById("res-species-label").innerHTML = `Crop: <span class="font-bold text-slate-500">None detected</span>`;
-        document.getElementById("res-confidence-pct").textContent = `0.0%`;
-        catBadge.className = "text-xs font-bold px-2.5 py-1 rounded-full bg-slate-200 text-slate-700 uppercase tracking-wider";
-        catBadge.textContent = "Non-Botanical";
-        recElem.textContent = "No botanical disease diagnosis can be performed on non-plant images or synthetic diagrams. Please upload a clear photo of Basil, Mint, or Aloe Vera foliage.";
+        condElem.textContent = isNonHerbal ? "Non-herbal plant detected" : "No plant leaf detected";
+        condElem.className = "text-xl font-bold text-amber-700";
+        const speciesLabel = document.getElementById("res-species-label");
+        const speciesValue = document.createElement("span");
+        speciesValue.className = "font-bold text-slate-500";
+        speciesValue.textContent = isNonHerbal ? "Outside supported plants" : "None detected";
+        speciesLabel.replaceChildren(document.createTextNode(isNonHerbal ? "Plant: " : "Crop: "), speciesValue);
+        document.getElementById("res-confidence-label").textContent = geminiPrimary
+          ? "Gemini visual score*"
+          : "YOLO26 confidence";
+        document.getElementById("res-confidence-pct").textContent = `${((geminiPrimary ? data.confidence : 0) * 100).toFixed(1)}%`;
+        catBadge.className = "text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 uppercase tracking-wider";
+        catBadge.textContent = isNonHerbal ? "Outside supported plants" : "No plant leaf";
+        recElem.textContent = data.recommendation || (isNonHerbal
+          ? "This app identifies only Aloe Vera, Basil, and Mint."
+          : "No clear plant leaf was detected. Please upload a well-lit leaf photo.");
       } else {
-        const cleanCondition = (data.primary_condition || "Unknown").replace(/_/g, " ");
+        const cleanCondition = geminiPrimary
+          ? (assessment.condition || "Uncertain visual assessment")
+          : String(data.primary_condition || "Unknown").replace(/_/g, " ");
         condElem.textContent = cleanCondition;
         condElem.className = "text-xl font-bold text-slate-900 capitalize";
-        document.getElementById("res-species-label").innerHTML = `Crop: <span class="font-bold text-slate-700 capitalize">${(data.plant_species || "").replace(/_/g, " ")}</span>`;
+        const speciesLabel = document.getElementById("res-species-label");
+        const speciesValue = document.createElement("span");
+        speciesValue.className = "font-bold text-slate-700 capitalize";
+        speciesValue.textContent = String(data.plant_species || "").replace(/_/g, " ");
+        speciesLabel.replaceChildren(document.createTextNode("Crop: "), speciesValue);
+        document.getElementById("res-confidence-label").textContent = geminiPrimary
+          ? "Gemini visual score*"
+          : "YOLO26 confidence";
         document.getElementById("res-confidence-pct").textContent = `${((data.confidence || 0) * 100).toFixed(1)}%`;
 
         // Category Badge
-        if (cleanCondition.includes("healthy") || cleanCondition.includes("fresh")) {
+        const category = data.condition_category || assessment?.category || "disease";
+        if (category === "healthy" || cleanCondition.toLowerCase().includes("healthy") || cleanCondition.toLowerCase().includes("fresh")) {
           catBadge.className = "text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 uppercase tracking-wider";
           catBadge.textContent = "Healthy Condition";
-        } else if (cleanCondition.includes("deficiency")) {
+        } else if (category === "deficiency" || cleanCondition.toLowerCase().includes("deficiency")) {
           catBadge.className = "text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 uppercase tracking-wider";
           catBadge.textContent = "Nutritional Deficiency";
+        } else if (category === "uncertain") {
+          catBadge.className = "text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 uppercase tracking-wider";
+          catBadge.textContent = "Uncertain Assessment";
+        } else if (category === "pest_damage") {
+          catBadge.className = "text-xs font-bold px-2.5 py-1 rounded-full bg-rose-100 text-rose-800 uppercase tracking-wider";
+          catBadge.textContent = "Possible Pest Damage";
         } else {
           catBadge.className = "text-xs font-bold px-2.5 py-1 rounded-full bg-rose-100 text-rose-800 uppercase tracking-wider";
           catBadge.textContent = "Disease Pathology";
         }
 
         // Recommendation
-        const rec = RECOMMENDATIONS[data.primary_condition] || "Perform regular visual inspections and monitor soil moisture.";
+        const rec = data.recommendation || RECOMMENDATIONS[data.primary_condition] || "Perform regular visual inspections and monitor soil moisture.";
         recElem.textContent = rec;
       }
 
@@ -728,20 +921,84 @@
         warnBox.classList.add("hidden");
       }
 
+      // Keep Gemini's primary diagnosis visible; the YOLO cross-check is
+      // available in the optional disclosure below.
+      const verificationBox = document.getElementById("res-verification");
+      const verificationNote = document.getElementById("res-verification-note");
+      const verificationChanges = document.getElementById("res-verification-changes");
+      verificationChanges.replaceChildren();
+      if (verification) {
+        verificationBox.classList.remove("hidden");
+        const count = verification.reviewed_count || 0;
+        const corrections = verification.corrections || [];
+        const notes = {
+          matched: "Gemini and YOLO26 agreed on the plant and visible condition.",
+          disagreed_gemini_preferred: "Gemini and YOLO26 disagreed. Gemini's diagnosis is shown as primary; the original YOLO26 result is retained below for comparison.",
+          uncertain_gemini_preferred: "Gemini returned an uncertain visual assessment. It is shown with the YOLO26 cross-check for context.",
+          non_herbal_plant_detected: "Gemini detected a plant outside the supported set (Aloe Vera, Basil, and Mint); the YOLO26 result is retained below for comparison.",
+          corrected: `Gemini reviewed ${count} result(s) and suggested ${corrections.length} label correction(s). YOLO26 confidence and boxes were retained.`,
+          reviewed: `Gemini reviewed ${count} result(s); no label change passed the configured correction checks.`,
+          missing_key: "Gemini Vision is not configured; the YOLO26 result is shown as fallback.",
+          disabled: "Gemini Vision is disabled; the YOLO26 result is shown as fallback.",
+          skipped: "Gemini did not return an assessment; the YOLO26 result is shown as fallback.",
+          failed: "Gemini Vision was unavailable; the YOLO26 result is shown as fallback."
+        };
+        const backendNote = typeof verification.note === "string" ? verification.note.trim().slice(0, 300) : "";
+        verificationNote.textContent = backendNote || notes[verification.status] || "YOLO26 result shown; Gemini review status unavailable.";
+        if (assessment) {
+          const geminiLine = document.createElement("p");
+          geminiLine.className = "text-xs mt-2";
+          geminiLine.textContent = `Gemini: ${String(assessment.plant_species || "unknown").replace(/_/g, " ")} — ${assessment.condition} (visual score ${(Number(assessment.visual_confidence || 0) * 100).toFixed(1)}%, not calibrated)`;
+          verificationChanges.appendChild(geminiLine);
+        }
+        corrections.forEach((change) => {
+          const row = document.createElement("p");
+          row.className = "text-xs leading-relaxed";
+          const label = document.createElement("span");
+          label.className = "font-semibold";
+          label.textContent = `#${(change.detection_index || 0) + 1}: ${String(change.from_class || "").replace(/_/g, " ")} → ${String(change.to_class || "").replace(/_/g, " ")}`;
+          row.appendChild(label);
+          const explanation = document.createElement("span");
+          explanation.textContent = ` — ${change.explanation || "Visual review suggested this class."} (visual review score ${(Number(change.visual_confidence || 0) * 100).toFixed(0)}%; not calibrated)`;
+          row.appendChild(explanation);
+          verificationChanges.appendChild(row);
+        });
+      } else {
+        verificationBox.classList.add("hidden");
+      }
+
       // Latency Profile
       const lat = data.latency_ms || { preprocessing: 0, inference: 0, postprocessing: 0, total: 0 };
       document.getElementById("lat-pre").textContent = `${lat.preprocessing.toFixed(1)}ms`;
+      document.getElementById("lat-gemini").textContent = `${Number(lat.gemini || 0).toFixed(1)}ms`;
       document.getElementById("lat-inf").textContent = `${lat.inference.toFixed(1)}ms`;
       document.getElementById("lat-post").textContent = `${lat.postprocessing.toFixed(1)}ms`;
       document.getElementById("lat-tot").textContent = `${lat.total.toFixed(1)}ms`;
 
       // Detections List
+      const yoloDetails = document.getElementById("yolo-details");
+      yoloDetails.classList.remove("hidden");
+      yoloDetails.open = !hideYoloCrossCheck;
+
       const detList = document.getElementById("detections-list");
       const detCount = document.getElementById("det-count");
+      const yoloSummary = document.getElementById("yolo-result-summary");
       detList.innerHTML = "";
 
-      const dets = data.detections || [];
+      const yoloResult = verification?.yolo_result;
+      const dets = Array.isArray(yoloResult?.detections) ? yoloResult.detections : (data.detections || []);
       detCount.textContent = dets.length;
+      if (yoloResult) {
+        const yoloSpecies = String(yoloResult.plant_species || "unknown").replace(/_/g, " ");
+        const yoloCondition = String(yoloResult.primary_condition || "unknown").replace(/_/g, " ");
+        yoloSummary.textContent = `YOLO26 result: ${yoloSpecies} — ${yoloCondition} (${(Number(yoloResult.confidence || 0) * 100).toFixed(1)}% model confidence).`;
+      } else if (!geminiPrimary) {
+        const yoloSpecies = String(data.plant_species || "unknown").replace(/_/g, " ");
+        const yoloCondition = String(data.primary_condition || "unknown").replace(/_/g, " ");
+        yoloSummary.textContent = `YOLO26 result: ${yoloSpecies} — ${yoloCondition} (${(Number(data.confidence || 0) * 100).toFixed(1)}% model confidence).`;
+      } else {
+        yoloSummary.textContent = "YOLO26 localized detections are shown for comparison.";
+      }
 
       if (dets.length === 0) {
         detList.innerHTML = `<div class="text-xs text-slate-400 py-2 italic text-center">No localized bounding box lesions detected</div>`;
